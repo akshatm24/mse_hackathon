@@ -7,4 +7,10 @@ coverage/
 .DS_Store
 .env.local
 .env*.local
+.env.production
+.env.development.local
+.env.test.local
+.env.production.local
+.netlify/
+*.pem
 .vercel

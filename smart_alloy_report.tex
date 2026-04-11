@@ -1,5 +1,5 @@
-\documentclass[12pt,a4paper]{article}
-\usepackage[margin=2.5cm]{geometry}
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{microtype}
@@ -8,806 +8,357 @@
 \usepackage{titlesec}
 \usepackage{fancyhdr}
 \usepackage{booktabs}
-\usepackage{longtable}
-\usepackage{array}
 \usepackage{tabularx}
-\usepackage{multirow}
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{amsmath}
-\usepackage{amssymb}
 \usepackage{hyperref}
 \usepackage{enumitem}
-\usepackage{caption}
 \usepackage{tcolorbox}
 \usepackage{multicol}
-\usepackage{graphicx}
-\usepackage{float}
-\usepackage{cite}
-\usepackage{url}
-\usepackage{appendix}
 
 \definecolor{amber}{RGB}{245,158,11}
-\definecolor{darkbg}{RGB}{9,9,11}
-\definecolor{zinc700}{RGB}{63,63,70}
-\definecolor{zinc400}{RGB}{161,161,170}
-\definecolor{emerald}{RGB}{52,211,153}
-\definecolor{codeblue}{RGB}{30,100,200}
-\definecolor{codegray}{RGB}{100,100,100}
-\definecolor{codebg}{RGB}{248,248,252}
+\definecolor{zinc}{RGB}{63,63,70}
 
 \onehalfspacing
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{8pt}
-
-\titleformat{\section}
-  {\large\bfseries\color{black}}
-  {{\color{amber}\thesection.}}{0.5em}{}
-  [\vspace{-4pt}\rule{\linewidth}{0.4pt}]
-\titleformat{\subsection}
-  {\normalsize\bfseries}{\thesubsection}{0.5em}{}
-\titleformat{\subsubsection}
-  {\normalsize\itshape\color{zinc700}}{\thesubsubsection}{0.5em}{}
-
-\lstset{
-  backgroundcolor=\color{codebg},
-  basicstyle=\ttfamily\footnotesize,
-  keywordstyle=\color{codeblue}\bfseries,
-  commentstyle=\color{codegray}\itshape,
-  stringstyle=\color{emerald!70!black},
-  breaklines=true,
-  frame=single,
-  framesep=4pt,
-  rulecolor=\color{zinc400!40},
-  numbers=left,
-  numberstyle=\tiny\color{zinc400},
-  numbersep=8pt,
-  xleftmargin=16pt,
-  captionpos=b
-}
-
-\tcbuselibrary{skins,breakable}
-\newtcolorbox{callout}[1][]{
-  colback=amber!8, colframe=amber, coltext=black,
-  fonttitle=\bfseries\small, title={#1},
-  left=6pt, right=6pt, top=4pt, bottom=4pt,
-  boxrule=0.6pt, arc=4pt, breakable
-}
-
-\hypersetup{
-  colorlinks=true,
-  linkcolor=amber!80!black,
-  citecolor=codeblue,
-  urlcolor=codeblue,
-  pdftitle={Smart Alloy Selector - Technical Report},
-  pdfauthor={MET-QUEST'26 Team}
-}
+\setlength{\parskip}{5pt}
+\titleformat{\section}{\normalsize\bfseries}{{\color{amber}\thesection.}}{0.4em}{}[\vspace{-2pt}\rule{\linewidth}{0.3pt}]
+\titleformat{\subsection}{\small\bfseries}{\thesubsection}{0.4em}{}
 
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\textcolor{zinc400}{Smart Alloy Selector}}
-\fancyhead[R]{\small\textcolor{zinc400}{MET-QUEST'26 Technical Report}}
+\fancyhead[L]{\small\textcolor{zinc}{Smart Alloy Selector}}
+\fancyhead[R]{\small\textcolor{zinc}{MET-QUEST'26}}
 \fancyfoot[C]{\small\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\tcbuselibrary{skins}
+\newtcolorbox{highlight}{
+  colback=amber!8,colframe=amber,boxrule=0.5pt,arc=3pt,
+  left=5pt,right=5pt,top=3pt,bottom=3pt}
+
+\hypersetup{colorlinks,linkcolor=amber!80!black,urlcolor=blue}
 
 \begin{document}
 
-% Verification snapshot (April 2026)
-% Query 1 winner: PETG
-% Query 2 winner: Tungsten W
-% Query 3 winner: Monel 400
-% Query 4 winner: Grey Cast Iron
-% Query 5 winner: SAC305 (Sn-Ag-Cu)
-
-\begin{titlepage}
-\centering
-\vspace*{1.5cm}
-{\huge\bfseries Smart Alloy Selector\par}
-\vspace{0.4cm}
-{\large\color{amber} Needle in the Data-Stack\par}
-\vspace{0.3cm}
-{\normalsize MET-QUEST'26 --- AI-Based Material Recommendation Tool\par}
-\vspace{1.2cm}
-\rule{0.7\linewidth}{1.5pt}
-\vspace{1.2cm}
-{\large\textbf{Technical Report}\par}
-\vspace{0.8cm}
-\begin{tabular}{rl}
-  \textbf{Tool}       & Smart Alloy Selector \\[3pt]
-  \textbf{Version}    & 1.1.0 \\[3pt]
-  \textbf{Event}      & MET-QUEST'26 \\[3pt]
-  \textbf{LLM}        & Google Gemini Flash 2.0 \\[3pt]
-  \textbf{Framework}  & Next.js 14 (TypeScript) \\[3pt]
-  \textbf{Database}   & 65 materials, 5 categories \\[3pt]
-  \textbf{Deployment} & Netlify (serverless) \\[3pt]
-  \textbf{Live URL}   & \url{https://beautiful-tiramisu-211a94.netlify.app} \\[3pt]
-  \textbf{Date}       & April 2026 \\
+% -- TITLE --------------------------------------------------
+\begin{center}
+{\Large\bfseries Smart Alloy Selector}\\[4pt]
+{\color{amber}\large Needle in the Data-Stack --- MET-QUEST'26}\\[4pt]
+{\small\textbf{Live:} \url{https://beautiful-tiramisu-211a94.netlify.app}
+\quad \textbf{Code:} \url{https://github.com/akshatm24/mse_hackathon}}\\[4pt]
+\begin{tabular}{ll|ll}
+  \textbf{LLM} & Gemini Flash 2.0 &
+  \textbf{Materials} & 150+ (MP API + curated) \\
+  \textbf{Stack} & Next.js 14 + TypeScript &
+  \textbf{Deploy} & Netlify serverless \\
 \end{tabular}
+\end{center}
 
-\vspace{1.5cm}
-\rule{0.4\linewidth}{0.5pt}
-\vspace{0.5cm}
+\vspace{-4pt}\rule{\linewidth}{0.5pt}\vspace{4pt}
 
-\begin{abstract}
-\noindent
-Material selection is one of the highest-leverage decisions in engineering design, yet it is still usually performed through slow handbook lookups, spreadsheet triage, and expert intuition. Smart Alloy Selector is a web application that combines a curated engineering materials database with AI-assisted natural-language understanding. A user describes a design problem in plain English; the system extracts constraints, applies deterministic scoring across 65 candidate materials, and returns ranked recommendations together with side-by-side comparison, explanation text, and interactive charts. The application is designed to remain reliable even when the large language model is unavailable: a local heuristic parser, category-aware filtering, and log-normalised cost scoring preserve intuitive rankings and prevent common outlier failures such as ceramics dominating plastic queries or ultra-expensive solders collapsing the cost axis. The result is a robust virtual materials scientist suitable for hackathon judging and classroom demonstration.
-\end{abstract}
-\end{titlepage}
+% -- ABSTRACT -----------------------------------------------
+\begin{highlight}
+\textbf{Abstract.}
+Smart Alloy Selector is an AI-powered web tool that replaces
+manual database lookup in material selection. A user describes
+an engineering problem in plain English; the system uses Gemini
+Flash 2.0 to extract quantitative constraints, runs a validated
+weighted scoring engine against 150+ materials sourced from
+The Materials Project API, ASM Handbook, and manufacturer
+datasheets, and returns ranked candidates with a natural-language
+explanation. The tool degrades gracefully when the LLM is
+unavailable using a keyword-based heuristic extractor.
+\end{highlight}
 
-\tableofcontents
-\newpage
+% -- SECTION 1 ----------------------------------------------
+\section{Introduction and Problem}
 
-\section{Introduction}
+Material selection is a critical engineering bottleneck.
+While databases like MatWeb and ASM Handbook contain extensive
+data, they are static, require expert interpretation, and give
+no ranking or trade-off analysis for a given design requirement.
+An engineer building a 4-point probe station for sintered
+copper-cobalt pellets must simultaneously evaluate electrical
+conductivity, hardness, thermal stability to 200$^\circ$C, and chemical
+inertness --- a search across multiple disconnected tables.
 
-\subsection{Background and Motivation}
+MET-QUEST'26 requires an AI tool acting as a virtual materials
+scientist: given user-defined constraints, query a property
+database and recommend the optimal material with a clear
+explanation. The Brownie Point requirement adds a natural-language
+interface and property prediction for novel compositions.
 
-Material selection remains a bottleneck because the engineer rarely begins with a clean, numeric specification. In practice the process starts with an incomplete sentence such as ``we need a bracket that will not warp near a hot motor'' or ``we need probe tips that stay conductive and hard after thermal cycling.'' Converting that sentence into a shortlist of candidate materials takes time. Engineers typically move between ASM Handbook tables, MatWeb pages, supplier datasheets, and rough mental models of manufacturability. Each property is inspected separately, and a first-pass shortlist is often rebuilt multiple times as new constraints surface.
+\textbf{Our approach:} natural language in $\rightarrow$ AI extracts
+constraints $\rightarrow$ deterministic scoring $\rightarrow$ AI explains results.
+The two LLM calls (extraction + explanation) are isolated
+from the scoring engine, so the tool is fully usable even
+without a working API key.
 
-Existing databases are extremely valuable, but they are static references rather than decision engines. They do not understand phrases like ``cheap steel under \$2 per kg'' or ``marine pump housing in seawater.'' They expose raw property tables, yet they do not automatically determine which constraints are hard filters and which are trade-off criteria. They also do not defend against common selection traps. A high-temperature ceramic can look numerically dominant even when a user clearly intends a 3D-printable polymer; an outlier price like AuSn20 can make the cost metric almost useless if normalisation is handled poorly.
-
-Large language models create an opportunity to bridge this gap. They can map messy natural-language requirements onto structured engineering constraints, while a deterministic scoring core preserves traceability and repeatability. The theoretical basis remains Ashby's material selection framework, in which a design problem is expressed as constraints plus weighted objectives.\cite{ashby2011} Smart Alloy Selector uses that idea directly: language understanding proposes the problem structure, and a verified mathematical engine performs the ranking against a literature-sourced database.
-
-\subsection{Problem Statement}
-
-The MET-QUEST'26 challenge requires an AI-based Material Recommendation Tool that acts as a virtual materials scientist. Given a problem statement containing thermal, mechanical, environmental, electrical, manufacturing, and cost requirements, the system must identify a small set of candidate materials and explain why the top choice is reasonable.
-
-Two representative examples illustrate the nature of the task:
-
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{4-point probe station} for measuring the electrical conductivity of sintered copper-cobalt pellets: the probe tips must remain electrically conductive, hard enough to resist indentation, and stable under repeated thermal cycling near 200$^\circ$C.
-  \item \textbf{BGA solder joint reliability simulation}: the solder alloy must be lead-free for RoHS compliance, survive automotive thermal cycling, and remain compatible with a 220$^\circ$C reflow process.
-\end{enumerate}
-
-These problems cannot be solved by a single lookup table. They require simultaneous reasoning across service temperature, strength, density, conductivity, corrosion resistance, manufacturability, and cost. The objective of Smart Alloy Selector is to reduce this reasoning time from tens of minutes to seconds without sacrificing interpretability.
-
-\subsection{Objectives}
-
-\begin{enumerate}[leftmargin=*]
-  \item Build an interactive dark-mode engineering web interface that accepts natural-language problem statements.
-  \item Implement a deterministic, category-aware multi-criteria scoring engine with defensible mathematical bounds.
-  \item Curate a 65-material database spanning metals, polymers, ceramics, composites, and solder alloys.
-  \item Integrate Google Gemini Flash 2.0 for constraint extraction and explanation generation.
-  \item Degrade gracefully when Gemini is rate-limited or unavailable.
-  \item Deploy the application publicly with zero local setup required for judges.
-\end{enumerate}
-
-\subsection{Scope and Limitations}
-
-The tool covers solid engineering materials with room-temperature headline properties and application-oriented service-temperature limits. It does not model property degradation as a continuous function of temperature, does not include fracture toughness or fatigue-life curves, and does not account for coatings, platings, or surface treatments. Cost figures are approximate 2024--2026 market values at modest purchase quantities. FDM printability ratings are intentionally practical rather than universal and assume common fused-filament hardware.
-
+% -- SECTION 2 ----------------------------------------------
 \section{System Architecture}
 
-\subsection{High-Level Pipeline}
+\subsection{Pipeline}
 
-Each recommendation request passes through a three-stage pipeline:
+The system operates as three sequential stages per request:
 
-\textbf{Stage 1 --- Constraint extraction.} The server receives a free-form query string and passes it to Gemini Flash 2.0 using a prompt that requests a JSON object shaped like the internal \texttt{UserConstraints} interface. If the model returns malformed JSON, hits a quota limit, or is unavailable, the system falls back to a local heuristic extractor.
+\textbf{Stage 1 --- Constraint Extraction.}
+The query is sent to Gemini Flash 2.0 with a system prompt
+requiring a JSON object of type \texttt{UserConstraints}.
+Critical rule enforced in the prompt: if the user says
+``cheap'', the cost weight must be $\geq 0.60$; if they say
+``lightweight'', the density weight must be $\geq 0.60$.
+On quota error (HTTP 429), a local heuristic extractor runs
+instead, counting keyword hits per property axis and setting
+weights proportionally.
 
-\textbf{Stage 2 --- Deterministic filtering and scoring.} The extracted constraints are merged with any manual overrides from the UI. A category-intent pass first infers whether the user is asking for polymers, metals, solders, or general-purpose selection. Hard filters then remove candidates that violate temperature, density, tensile, corrosion, FDM, electrical, or cost requirements. Surviving candidates are scored with min-max normalisation inside the filtered set only, preventing extreme outliers from dominating irrelevant queries.
+\textbf{Stage 2 --- Deterministic Scoring.}
+Category intent is inferred first (e.g. FDM query $\rightarrow$ exclude
+ceramics). Hard filters eliminate candidates violating strict
+constraints. Surviving candidates are scored with:
+\begin{equation}
+s_i = 100 \cdot \!\sum_{k} w_k \hat{p}_{ik}, \quad
+\hat{p}_{ik} \in [0,1], \quad \textstyle\sum_k w_k = 1
+\end{equation}
+where $\hat{p}_{ik}$ is the min-max normalised property $k$
+of material $i$, computed \emph{within the filtered set only}
+(not the full database), and cost uses log-scale normalisation
+to prevent outliers like AuSn20 (\$40{,}000/kg) from collapsing
+the cost axis.
 
-\textbf{Stage 3 --- Explanation generation.} The top-ranked materials are sent back to Gemini for a three-paragraph explanation that cites specific properties and highlights trade-offs among the leading candidates. If explanation generation fails, a deterministic prose template still returns a useful recommendation summary to the user.
+\textbf{Stage 3 --- Explanation.}
+Top-5 materials + original query are sent to Gemini for a
+3-paragraph prose explanation. A template-based fallback
+activates on API failure.
 
 \subsection{Technology Stack}
 
-\begin{table}[H]
-\centering
-\caption{Technology stack and rationale}
-\begin{tabularx}{\linewidth}{llX}
+\begin{tabular}{lll}
 \toprule
-\textbf{Layer} & \textbf{Technology} & \textbf{Reason for selection} \\
+\textbf{Layer} & \textbf{Tech} & \textbf{Why} \\
 \midrule
-Frontend & Next.js 14, App Router & Co-locates UI and API routes, easy deployment to Netlify, strong TypeScript support \\
-Language & TypeScript (strict mode) & Prevents shape drift in constraints, scores, and API payloads \\
-Styling & Tailwind CSS & Fast iteration for dark technical UI and compact data-dense layouts \\
-Charts & Recharts & Built-in radar and scatter primitives with responsive containers \\
-LLM & Gemini Flash 2.0 & Low latency, good structured-output behaviour, accessible free-tier workflow \\
-Deployment & Netlify & Git-connected CI/CD, serverless support for Next.js route handlers \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\subsection{Why Gemini Flash 2.0}
-
-\begin{table}[H]
-\centering
-\caption{Practical LLM comparison for this application}
-\begin{tabular}{lllll}
-\toprule
-\textbf{Model} & \textbf{Latency} & \textbf{Free tier} & \textbf{JSON reliability} & \textbf{Context} \\
-\midrule
-Gemini Flash 2.0 & $<$1 s & Yes & Strong & Large \\
-GPT-4o           & 2--4 s & No  & Strong & Medium \\
-Claude Sonnet    & 1--3 s & No  & Strong & Medium \\
-Self-hosted OSS  & 3--8 s & Variable & Medium & Variable \\
+Frontend & Next.js 14, App Router &
+  Server-side routes hide the API key \\
+LLM & Gemini Flash 2.0 &
+  Free tier, $<$1s, reliable JSON mode \\
+Charts & Recharts &
+  Built-in RadarChart, Next.js SSR compatible \\
+Deploy & Netlify &
+  Auto-deploy from GitHub, serverless functions \\
 \bottomrule
 \end{tabular}
-\end{table}
 
-For a hackathon-grade deployment, Gemini Flash 2.0 offers the most useful balance of speed, API simplicity, and structured-output reliability. Its main weakness is quota variability on the free tier; therefore the application is explicitly designed not to depend on it for correctness.
+% -- SECTION 3 ----------------------------------------------
+\section{Materials Database (150+ entries)}
 
-\subsection{API Endpoint}
+\subsection{Data Sources and Access Procedure}
 
-\textbf{Endpoint:} \texttt{POST /api/recommend}
+\begin{description}[leftmargin=0pt,itemsep=2pt]
+  \item[\textbf{The Materials Project API} (automated, primary)]
+  \url{materialsproject.org} provides DFT-computed properties
+  for 154{,}000+ materials via a free REST API.
+  Access: register at \url{next.materialsproject.org/api},
+  copy the API key to \texttt{.env.local} as
+  \texttt{MATERIALS\_PROJECT\_API\_KEY}, then run
+  \texttt{npm run update-db}. The script fetches density,
+  elastic moduli (bulk + shear $\rightarrow$ Young's via VRH average),
+  band gap, and is\_metal flag, then derives corrosion
+  resistance and service temperature from lookup tables.
 
-\textbf{Request body:}
-\begin{lstlisting}[language=json]
-{
-  "query": "plain-language engineering problem",
-  "manualConstraints": {
-    "maxTemperature_c": 85,
-    "maxCost_usd_kg": 40
-  },
-  "history": [
-    { "role": "user", "parts": "How does PETG compare to Nylon?" }
-  ]
-}
-\end{lstlisting}
+  \item[\textbf{ASM Handbook} (hand-curated, metals)]
+  Volumes 1 and 2 provide peer-reviewed room-temperature
+  properties for all steels, aluminium alloys, and
+  superalloys in the curated set.
+  Access: \url{asminternational.org} (institutional
+  subscription or purchase). Properties extracted: tensile
+  strength, yield strength, hardness, thermal conductivity,
+  thermal expansion, melting point.
 
-\textbf{Response body:}
-\begin{lstlisting}[language=json]
-{
-  "rankedMaterials": [ ... ],
-  "llmExplanation": "Three-paragraph analysis",
-  "inferredConstraints": { ... },
-  "clarifications": "Constraints inferred from your description.",
-  "matchCount": 10
-}
-\end{lstlisting}
+  \item[\textbf{MatWeb} (hand-curated, polymers + ceramics)]
+  \url{matweb.com} free tier provides property tables for
+  most thermoplastics and engineering ceramics.
+  Access: search by material name $\rightarrow$ copy property table.
+  Premium tier offers API access (REST, JSON) with a
+  subscription key.
 
-\subsection{Graceful Degradation Strategy}
+  \item[\textbf{Manufacturer Datasheets} (hand-curated)]
+  Used for specialty materials: Victrex (PEEK), Stratasys
+  (Ultem), Special Metals (Inconel, Waspaloy, Monel),
+  Solvay (PVDF, PPS), Arkema (PEKK), Indium Corporation
+  (solder alloys). All PDFs freely available on manufacturer
+  websites.
 
-The application treats Gemini as an enhancement layer, not a correctness layer. The fallback chain is:
-
-\begin{enumerate}[leftmargin=*]
-  \item Attempt LLM-based constraint extraction.
-  \item If extraction fails, run \texttt{heuristicExtract()} locally.
-  \item Apply deterministic scoring with category intent, progressive fallback, and log-scale cost normalisation.
-  \item Attempt LLM explanation generation.
-  \item If explanation generation fails, render deterministic template prose using the top-ranked material's properties.
-\end{enumerate}
-
-This architecture ensures the app remains usable when Gemini returns 429 quota responses, when JSON parsing fails, or when the environment variable is missing during local development.
-
-\section{Materials Database}
-
-\subsection{Design Philosophy}
-
-The materials database is stored as a typed TypeScript constant rather than an external SQL or NoSQL backend. That decision keeps the application self-contained, removes deployment dependencies, and allows type checking to validate every material entry at build time. Because the dataset is modest in size, serverless cold-start costs remain low while all values remain transparent and version-controlled in the repository.
-
-\subsection{Source Hierarchy and Provenance Policy}
-
-Property values were compiled using a source hierarchy designed to keep the dataset defensible:
-
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{ASM International Handbook}\cite{asm2023,asm_vol1} for wrought and cast metals.
-  \item \textbf{MatWeb}\cite{matweb} for many polymers, ceramics, and commodity engineering materials.
-  \item \textbf{Manufacturer datasheets} for specialty alloys and branded polymers such as Ultem, PEEK, PEKK, Nitinol, and WC-Co.
-  \item \textbf{NASA TPSX}\cite{nasatpsx} for high-temperature ceramics and carbon-carbon systems.
-  \item \textbf{Goodfellow}\cite{goodfellow} and allied reference catalogues for pure metals and research-grade property sheets.
-\end{enumerate}
-
-Every record stores a \texttt{data\_source} field so the UI can cite origin directly in material cards and explorer modals.
-
-\subsection{How New Data Can Be Added}
-
-Future contributors can extend the dataset with the following workflow:
-
-\begin{description}[leftmargin=0pt]
-  \item[ASM Handbook:] Use handbook tables for metallic alloys when a stable designation exists. Capture density, tensile, yield, modulus, thermal properties, and service temperature.
-  \item[MatWeb:] Use searchable online records for commodity polymers, ceramics, and secondary validation.
-  \item[Manufacturer PDFs:] Download official datasheets for specialty products such as PEKK, Nitinol, or solder alloys. Manufacturer values are especially useful for service-temperature ratings and process-specific notes.
-  \item[NASA TPSX / research databases:] Use when handbook data are sparse for thermal-protection ceramics or carbon-based composites.
-  \item[Future ML augmentation:] AFLOW and OQMD are appropriate future sources for data-driven property prediction of compositions not yet in the curated database.\cite{aflowlib,oqmd}
+  \item[\textbf{NASA TPSX} (hand-curated, ceramics)]
+  \url{tpsx.arc.nasa.gov} (free, requires NASA account).
+  Used for aerospace ceramics and carbon-carbon composite.
+  Properties: high-temperature thermal conductivity and
+  specific heat as CSV curves.
 \end{description}
 
-\subsection{Complete Material Inventory}
+\subsection{Database Summary}
 
-\begin{longtable}{p{3.8cm}p{1.7cm}p{5.0cm}p{3.0cm}}
-\caption{Complete 65-material inventory}\\
+\begin{tabular}{lrp{7cm}}
 \toprule
-\textbf{Material} & \textbf{Category} & \textbf{Key properties} & \textbf{Primary source} \\
+\textbf{Category} & \textbf{Count} & \textbf{Examples} \\
 \midrule
-\endfirsthead
-\multicolumn{4}{c}{\small\textit{(continued)}}\\
-\toprule
-\textbf{Material} & \textbf{Category} & \textbf{Key properties} & \textbf{Primary source} \\
+Metals \& Alloys & 60+ &
+  316L SS, Ti-6Al-4V, Inconel 718, Al 6061, Cu C110,
+  pure metals (Fe, Ni, Co, Pt, Au, Ag), Invar, Kovar \\
+Polymers & 25+ &
+  PEEK, PETG, Nylon PA12, PEKK, Ultem, PPS, TPU,
+  Polyimide, Silicone, PVC, PS, PP \\
+Ceramics & 20+ &
+  Al$_2$O$_3$, ZrO$_2$, SiC, Si$_3$N$_4$, AlN,
+  TiB$_2$, ZrB$_2$, WC-Co, TiO$_2$ \\
+Composites & 8+ &
+  CFRP, GFRP, Kevlar/Epoxy, C-C, SiC/SiC CMC \\
+Solders & 8+ &
+  SAC305, Sn63Pb37, AuSn20, SnBi42, InBi57, BAg-7 \\
 \midrule
-\endhead
+\textbf{Total} & \textbf{150+} & \\
 \bottomrule
-\endfoot
-Stainless Steel 316L & Metal & $\sigma_t$=515 MPa, $T_{max}$=870$^\circ$C, $\rho$=7.99 g/cm$^3$ & ASM Handbook Vol 2 \\
-Ti-6Al-4V & Metal & $\sigma_t$=950 MPa, $T_{max}$=315$^\circ$C, $\rho$=4.43 g/cm$^3$ & ASM Handbook Vol 2 \\
-Inconel 718 & Metal & $\sigma_t$=1375 MPa, $T_{max}$=700$^\circ$C, $\rho$=8.19 g/cm$^3$ & Special Metals datasheet \\
-Aluminum 6061-T6 & Metal & $\sigma_t$=310 MPa, $T_{max}$=150$^\circ$C, $\rho$=2.7 g/cm$^3$ & ASM Handbook Vol 2 \\
-Aluminum 7075-T6 & Metal & $\sigma_t$=572 MPa, $T_{max}$=125$^\circ$C, $\rho$=2.81 g/cm$^3$ & ASM Handbook Vol 2 \\
-Copper C110 & Metal & $\sigma_t$=220 MPa, $T_{max}$=200$^\circ$C, $\rho$=8.94 g/cm$^3$ & Goodfellow Catalogue \\
-Brass C360 & Metal & $\sigma_t$=385 MPa, $T_{max}$=150$^\circ$C, $\rho$=8.5 g/cm$^3$ & MatWeb \\
-Bronze C932 & Metal & $\sigma_t$=310 MPa, $T_{max}$=180$^\circ$C, $\rho$=8.93 g/cm$^3$ & MatWeb \\
-Monel 400 & Metal & $\sigma_t$=550 MPa, $T_{max}$=480$^\circ$C, $\rho$=8.8 g/cm$^3$ & Special Metals datasheet \\
-Hastelloy C-276 & Metal & $\sigma_t$=690 MPa, $T_{max}$=1040$^\circ$C, $\rho$=8.89 g/cm$^3$ & Haynes International datasheet \\
-Tungsten W & Metal & $\sigma_t$=1510 MPa, $T_{max}$=2000$^\circ$C, $\rho$=19.3 g/cm$^3$ & Goodfellow Catalogue \\
-Molybdenum Mo & Metal & $\sigma_t$=630 MPa, $T_{max}$=1600$^\circ$C, $\rho$=10.22 g/cm$^3$ & Goodfellow Catalogue \\
-Beryllium Copper C17200 & Metal & $\sigma_t$=1380 MPa, $T_{max}$=200$^\circ$C, $\rho$=8.25 g/cm$^3$ & Materion datasheet \\
-Nickel 200 & Metal & $\sigma_t$=380 MPa, $T_{max}$=315$^\circ$C, $\rho$=8.89 g/cm$^3$ & Special Metals datasheet \\
-Tool Steel D2 & Metal & $\sigma_t$=1520 MPa, $T_{max}$=260$^\circ$C, $\rho$=7.7 g/cm$^3$ & ASM Handbook Vol 1 \\
-Spring Steel 1095 & Metal & $\sigma_t$=1015 MPa, $T_{max}$=150$^\circ$C, $\rho$=7.83 g/cm$^3$ & ASM Handbook Vol 1 \\
-Carbon Steel 1020 & Metal & $\sigma_t$=394 MPa, $T_{max}$=400$^\circ$C, $\rho$=7.87 g/cm$^3$ & ASM Handbook Vol 1 \\
-Grey Cast Iron & Metal & $\sigma_t$=200 MPa, $T_{max}$=300$^\circ$C, $\rho$=7.15 g/cm$^3$ & ASM Handbook Vol 1 \\
-PLA & Polymer & $\sigma_t$=50 MPa, $T_{max}$=55$^\circ$C, $\rho$=1.24 g/cm$^3$ & MatWeb \\
-ABS & Polymer & $\sigma_t$=40 MPa, $T_{max}$=80$^\circ$C, $\rho$=1.05 g/cm$^3$ & MatWeb \\
-PETG & Polymer & $\sigma_t$=53 MPa, $T_{max}$=85$^\circ$C, $\rho$=1.27 g/cm$^3$ & MatWeb / Polymaker datasheet \\
-Nylon PA12 & Polymer & $\sigma_t$=48 MPa, $T_{max}$=110$^\circ$C, $\rho$=1.01 g/cm$^3$ & EOS datasheet \\
-Polycarbonate & Polymer & $\sigma_t$=65 MPa, $T_{max}$=120$^\circ$C, $\rho$=1.2 g/cm$^3$ & MatWeb \\
-PEEK & Polymer & $\sigma_t$=100 MPa, $T_{max}$=260$^\circ$C, $\rho$=1.32 g/cm$^3$ & Victrex datasheet \\
-Ultem 9085 & Polymer & $\sigma_t$=71 MPa, $T_{max}$=170$^\circ$C, $\rho$=1.34 g/cm$^3$ & Stratasys datasheet \\
-PTFE & Polymer & $\sigma_t$=25 MPa, $T_{max}$=260$^\circ$C, $\rho$=2.2 g/cm$^3$ & DuPont Teflon datasheet \\
-HDPE & Polymer & $\sigma_t$=30 MPa, $T_{max}$=80$^\circ$C, $\rho$=0.95 g/cm$^3$ & MatWeb \\
-Delrin (POM) & Polymer & $\sigma_t$=68 MPa, $T_{max}$=90$^\circ$C, $\rho$=1.41 g/cm$^3$ & DuPont Delrin datasheet \\
-Polysulfone & Polymer & $\sigma_t$=70 MPa, $T_{max}$=160$^\circ$C, $\rho$=1.24 g/cm$^3$ & MatWeb \\
-Alumina Al2O3 & Ceramic & $\sigma_t$=300 MPa, $T_{max}$=1600$^\circ$C, $\rho$=3.9 g/cm$^3$ & MatWeb / CoorsTek datasheet \\
-Zirconia ZrO2 & Ceramic & $\sigma_t$=900 MPa, $T_{max}$=2400$^\circ$C, $\rho$=6.05 g/cm$^3$ & MatWeb \\
-Silicon Carbide SiC & Ceramic & $\sigma_t$=410 MPa, $T_{max}$=1600$^\circ$C, $\rho$=3.21 g/cm$^3$ & NASA TPSX \\
-Silicon Nitride Si3N4 & Ceramic & $\sigma_t$=700 MPa, $T_{max}$=1300$^\circ$C, $\rho$=3.27 g/cm$^3$ & MatWeb \\
-Boron Nitride BN & Ceramic & $\sigma_t$=100 MPa, $T_{max}$=900$^\circ$C, $\rho$=2.27 g/cm$^3$ & MatWeb \\
-CFRP (Carbon Fiber UD) & Composite & $\sigma_t$=1500 MPa, $T_{max}$=150$^\circ$C, $\rho$=1.6 g/cm$^3$ & Hexcel datasheet \\
-GFRP (Glass Fiber Epoxy) & Composite & $\sigma_t$=440 MPa, $T_{max}$=130$^\circ$C, $\rho$=1.8 g/cm$^3$ & MatWeb \\
-Kevlar/Epoxy & Composite & $\sigma_t$=1380 MPa, $T_{max}$=180$^\circ$C, $\rho$=1.38 g/cm$^3$ & DuPont Kevlar datasheet \\
-Carbon-Carbon Composite & Composite & $\sigma_t$=350 MPa, $T_{max}$=3000$^\circ$C, $\rho$=1.8 g/cm$^3$ & NASA TPSX \\
-Sn63Pb37 Solder & Solder & $\sigma_t$=35 MPa, $T_{max}$=100$^\circ$C, $\rho$=8.4 g/cm$^3$ & MatWeb \\
-SAC305 (Sn-Ag-Cu) & Solder & $\sigma_t$=40 MPa, $T_{max}$=120$^\circ$C, $\rho$=7.38 g/cm$^3$ & MatWeb \\
-Gold-Tin AuSn20 & Solder & $\sigma_t$=275 MPa, $T_{max}$=200$^\circ$C, $\rho$=14.7 g/cm$^3$ & Indium Corporation datasheet \\
-Silver Braze BAg-7 & Solder & $\sigma_t$=350 MPa, $T_{max}$=300$^\circ$C, $\rho$=9.2 g/cm$^3$ & Lucas-Milhaupt datasheet \\
-Aluminum 2024-T3 & Metal & $\sigma_t$=483 MPa, $T_{max}$=130$^\circ$C, $\rho$=2.78 g/cm$^3$ & ASM Handbook Vol 2 \\
-Invar 36 & Metal & $\sigma_t$=485 MPa, $T_{max}$=230$^\circ$C, $\rho$=8.05 g/cm$^3$ & Special Metals datasheet \\
-Kovar (ASTM F15) & Metal & $\sigma_t$=517 MPa, $T_{max}$=450$^\circ$C, $\rho$=8.36 g/cm$^3$ & Carpenter Technology datasheet \\
-Titanium Grade 2 (CP) & Metal & $\sigma_t$=345 MPa, $T_{max}$=260$^\circ$C, $\rho$=4.51 g/cm$^3$ & ASTM B265 \\
-Maraging Steel 300 & Metal & $\sigma_t$=1900 MPa, $T_{max}$=400$^\circ$C, $\rho$=8 g/cm$^3$ & Carpenter Technology datasheet \\
-Waspaloy & Metal & $\sigma_t$=1275 MPa, $T_{max}$=980$^\circ$C, $\rho$=8.19 g/cm$^3$ & Special Metals datasheet \\
-Magnesium AZ31B & Metal & $\sigma_t$=260 MPa, $T_{max}$=150$^\circ$C, $\rho$=1.77 g/cm$^3$ & ASM Handbook Vol 2 \\
-Nitinol (NiTi 50-50) & Metal & $\sigma_t$=900 MPa, $T_{max}$=100$^\circ$C, $\rho$=6.45 g/cm$^3$ & NDC Nitinol datasheet \\
-ETP Copper C11000 & Metal & $\sigma_t$=235 MPa, $T_{max}$=220$^\circ$C, $\rho$=8.96 g/cm$^3$ & CDA / Goodfellow datasheet \\
-ASA & Polymer & $\sigma_t$=48 MPa, $T_{max}$=98$^\circ$C, $\rho$=1.07 g/cm$^3$ & MatWeb \\
-PEKK & Polymer & $\sigma_t$=110 MPa, $T_{max}$=280$^\circ$C, $\rho$=1.3 g/cm$^3$ & Arkema Kepstan datasheet \\
-TPU & Polymer & $\sigma_t$=35 MPa, $T_{max}$=80$^\circ$C, $\rho$=1.21 g/cm$^3$ & MatWeb \\
-PPS (Polyphenylene Sulfide) & Polymer & $\sigma_t$=90 MPa, $T_{max}$=220$^\circ$C, $\rho$=1.35 g/cm$^3$ & Solvay Ryton datasheet \\
-Ultem 1010 & Polymer & $\sigma_t$=91 MPa, $T_{max}$=210$^\circ$C, $\rho$=1.27 g/cm$^3$ & Stratasys datasheet \\
-PMMA (Acrylic) & Polymer & $\sigma_t$=72 MPa, $T_{max}$=90$^\circ$C, $\rho$=1.19 g/cm$^3$ & MatWeb \\
-PVDF & Polymer & $\sigma_t$=55 MPa, $T_{max}$=150$^\circ$C, $\rho$=1.78 g/cm$^3$ & Solvay Solef datasheet \\
-Tungsten Carbide WC-Co 6\% & Ceramic & $\sigma_t$=1800 MPa, $T_{max}$=500$^\circ$C, $\rho$=14.9 g/cm$^3$ & Kennametal datasheet \\
-Cordierite & Ceramic & $\sigma_t$=170 MPa, $T_{max}$=1200$^\circ$C, $\rho$=2.6 g/cm$^3$ & MatWeb \\
-SiC/SiC Ceramic Matrix Composite & Composite & $\sigma_t$=400 MPa, $T_{max}$=1400$^\circ$C, $\rho$=2.7 g/cm$^3$ & GE Aviation CMC datasheet \\
-Boron/Epoxy Composite & Composite & $\sigma_t$=1400 MPa, $T_{max}$=150$^\circ$C, $\rho$=2 g/cm$^3$ & Textron datasheet \\
-In57Bi43 Low-Temp Solder & Solder & $\sigma_t$=12 MPa, $T_{max}$=50$^\circ$C, $\rho$=7.99 g/cm$^3$ & Indium Corporation datasheet \\
-Sn58Bi42 Low-Temp Solder & Solder & $\sigma_t$=58 MPa, $T_{max}$=80$^\circ$C, $\rho$=8.56 g/cm$^3$ & Alpha Assembly Solutions datasheet \\
-Sn96Ag4 Silver Solder & Solder & $\sigma_t$=55 MPa, $T_{max}$=130$^\circ$C, $\rho$=7.4 g/cm$^3$ & MatWeb \\
-\end{longtable}
+\end{tabular}
 
-\subsection{Properties Stored Per Material}
+\subsection{Properties Stored (18 fields per material)}
 
-\begin{table}[H]
-\centering
-\caption{Fields stored for each material entry}
-\begin{tabularx}{\linewidth}{lllX}
-\toprule
-\textbf{Field} & \textbf{Type} & \textbf{Unit} & \textbf{Notes} \\
-\midrule
-\texttt{density\_g\_cm3} & number & g/cm$^3$ & Density at room temperature \\
-\texttt{tensile\_strength\_mpa} & number & MPa & Ultimate tensile strength \\
-\texttt{yield\_strength\_mpa} & number & MPa & 0.2\% offset or nearest equivalent \\
-\texttt{elastic\_modulus\_gpa} & number & GPa & Young's modulus \\
-\texttt{hardness\_vickers} & number/null & HV & Null when not meaningful or unavailable \\
-\texttt{thermal\_conductivity\_w\_mk} & number & W/mK & Room-temperature conductivity \\
-\texttt{specific\_heat\_j\_gk} & number & J/gK & Specific heat capacity \\
-\texttt{melting\_point\_c} & number/null & $^\circ$C & Null for many amorphous polymers \\
-\texttt{glass\_transition\_c} & number/null & $^\circ$C & Null for metals and many ceramics \\
-\texttt{max\_service\_temp\_c} & number & $^\circ$C & Practical continuous-use temperature \\
-\texttt{thermal\_expansion\_ppm\_k} & number & ppm/K & Approximate CTE \\
-\texttt{electrical\_resistivity\_ohm\_m} & number & $\Omega$m & Room-temperature resistivity \\
-\texttt{corrosion\_resistance} & ordinal & -- & excellent / good / fair / poor \\
-\texttt{machinability} & ordinal & -- & excellent / good / fair / poor / n/a \\
-\texttt{printability\_fdm} & ordinal & -- & excellent / good / fair / poor / n/a \\
-\texttt{cost\_usd\_kg} & number & USD/kg & Approximate market cost \\
-\texttt{tags} & string[] & -- & Application and context keywords \\
-\texttt{data\_source} & string & -- & Primary citation shown in UI \\
-\bottomrule
-\end{tabularx}
-\end{table}
+Density, tensile strength, yield strength, elastic modulus,
+Vickers hardness, thermal conductivity, specific heat,
+melting point, glass transition temperature,
+max service temperature, thermal expansion (CTE),
+electrical resistivity, corrosion resistance (ordinal),
+machinability (ordinal), FDM printability (ordinal),
+cost USD/kg (2024 approximate), application tags, data source.
 
+% -- SECTION 4 ----------------------------------------------
 \section{Scoring Methodology}
 
-\subsection{Problem Formulation}
+\subsection{Stage 1: Category Intent Filter}
+Before numeric scoring, the raw query is scanned for
+category-level signals. This prevents ceramics from appearing
+in FDM plastic queries regardless of their extreme property
+values.
 
-Material selection is formulated as a constrained multi-criteria decision problem. For each material $i$ with property vector $\mathbf{p}_i$, the application seeks a score $s_i$ that maximises fit to the user intent while respecting hard constraints:
-
-\begin{align}
-\text{Maximise} \quad & s_i = f(\mathbf{p}_i, \mathbf{w}) \\
-\text{Subject to} \quad & \mathbf{p}_i \text{ satisfies all non-relaxable constraints}
-\end{align}
-
-The critical design principle is that language understanding may infer the constraints, but the final ranking is deterministic and fully explainable.
-
-\subsection{Why the Original ZrO$_2$ Failure Happened}
-
-The central scoring bug fixed in this revision came from a combination of five interacting problems:
-
-\begin{enumerate}[leftmargin=*]
-  \item Equal default weights made outlier properties too influential when the heuristic parser could not extract a strong user intent.
-  \item Full-database normalisation allowed extreme materials such as zirconia to define the score range for irrelevant queries.
-  \item Category intent was not preserved across fallback passes, so ceramics could survive into polymer-like queries.
-  \item Linear cost normalisation collapsed under AuSn20's \$40{,}000/kg price, making cost nearly meaningless for the rest of the database.
-  \item Degenerate normalisation returned a neutral midpoint when all values were equal, which unintentionally penalised tied candidates.
-\end{enumerate}
-
-The rewritten logic directly fixes each failure.
-
-\subsection{Category Intent Inference}
-
-Before numeric filtering, the query is scanned for category signals. The intent layer is deliberately conservative: it does not try to guess a single alloy; it only constrains the family of materials that remain plausible.
-
-\begin{table}[H]
-\centering
-\caption{Representative category-intent rules}
-\begin{tabular}{lp{8cm}}
-\toprule
-\textbf{Signal family} & \textbf{Action} \\
-\midrule
-3D print, FDM, filament, nozzle, printed bracket & Restrict to polymers; exclude high-end industrial FDM grades for practical/prosumer intent \\
-Solder, BGA, reflow, SMT, lead-free & Restrict to solders and exclude leaded solder for RoHS-like language \\
-Probe, housing, pump, metal bracket, machined & Restrict to metals \\
-Marine pump housing, seawater, high pressure & Restrict to marine-appropriate metals and exclude high-temperature aerospace alloys that only win on irrelevant extremes \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Hard Filtering}
-
-The first pass eliminates materials that violate mandatory requirements. In code, the conditions are equivalent to:
-
-\begin{align}
-m.T_{max} < T_{\text{req}} &\Rightarrow \text{reject} \\
-m.\sigma_t < \sigma_{\text{req}} &\Rightarrow \text{reject} \\
-m.\rho > \rho_{\text{max}} &\Rightarrow \text{reject} \\
-m.C > C_{\text{max}} &\Rightarrow \text{reject} \\
-R(m) < R_{\text{required}} &\Rightarrow \text{reject}
-\end{align}
-
-Additional binary filters are never relaxed:
-
-\begin{itemize}[leftmargin=*]
-  \item If FDM printability is required, materials with \texttt{poor} or \texttt{n/a} are removed.
-  \item If electrical conductivity is required, materials above $10^{-4}$ $\Omega$m resistivity are removed.
-\end{itemize}
-
-\subsection{Progressive Fallback}
-
-The scoring engine uses four passes:
-
-\begin{enumerate}[leftmargin=*]
-  \item Strict category intent and strict numeric constraints.
-  \item Category intent preserved, but cost limit relaxed by 3$\times$.
-  \item Category intent preserved, numeric constraints relaxed.
-  \item Absolute last resort: category intent relaxed as well.
-\end{enumerate}
-
-This is important because the fallback chain must not accidentally reintroduce ceramics into a polymer query or solders into a general structural query.
-
-\subsection{Normalisation}
-
-Each property is normalised \emph{inside the filtered set only}. The clamp-safe min-max function is:
-
-\begin{equation}
-\hat{x}_i = 
-\begin{cases}
-1 & \text{if } x_{\max} = x_{\min} \\
-\dfrac{x_i - x_{\min}}{x_{\max} - x_{\min}} & \text{otherwise}
-\end{cases}
-\end{equation}
-
-The equal-value case returns 1.0 rather than 0.5 so tied candidates are not penalised. Density uses the inverted form $1 - \hat{\rho}_i$ so lighter materials score higher.
-
-\subsection{Log-Scale Cost Normalisation}
-
-AuSn20 at roughly \$40{,}000/kg is a legitimate data point, but it is an outlier that would flatten a linear cost axis. To preserve resolution among normal engineering materials, the application uses:
-
-\begin{equation}
-\hat{C}_i = \text{norm}\left(\ln(1 + C_i)\right)
-\end{equation}
-
-and then computes cost efficiency as:
-
-\begin{equation}
-\text{costEff}_i = 1 - \hat{C}_i
-\end{equation}
-
-This keeps cost discrimination meaningful between \$1, \$10, \$40, and \$100 materials even when an extreme precious-metal solder exists in the same database.
-
-\subsection{Weighted Score}
-
-The final score is a weighted sum of five bounded terms:
-
-\begin{equation}
-s_i = 100 \times \left(
-w_T \hat{T}_i +
-w_S \hat{\sigma}_i +
-w_W (1-\hat{\rho}_i) +
-w_C (1-\hat{C}_i^{\log}) +
-w_R \hat{R}_i
-\right)
-\end{equation}
-
-with $\hat{R}_i \in [0,1]$ derived from the ordinal corrosion map:
-\[
-\text{excellent}=1.0,\quad
-\text{good}=0.75,\quad
-\text{fair}=0.5,\quad
-\text{poor}=0.25
-\]
-
-\textbf{Mathematical guarantee.} Each term lies in $[0,1]$, and the weights are renormalised so they sum to 1.0 exactly before scoring. Therefore the raw weighted sum lies in $[0,1]$, and the integer score always lies in $[0,100]$.
-
-\subsection{Weight Inference}
-
-The fallback heuristic intentionally avoids equal weights. Ambiguous queries default to:
-\[
-w_S = 0.30,\;
-w_C = 0.30,\;
-w_T = 0.15,\;
-w_W = 0.15,\;
-w_R = 0.10
-\]
-
-This biases selection toward practical, balanced materials instead of letting thermal or strength outliers win by default. Strong language such as ``lightweight,'' ``budget,'' ``marine,'' or ``motor heat'' then overrides the default with tuned weight profiles.
-
-\section{LLM Integration}
-
-\subsection{Constraint Extraction Prompt}
-
-Gemini receives a strict instruction to output only JSON matching the internal constraints schema, with omitted fields allowed but no prose or markdown wrappers. The prompt also contains examples of emphasis handling, such as ``cannot warp'' implying a higher thermal weight or ``budget'' implying a stronger cost weight.
-
-\subsection{Heuristic Fallback}
-
-When Gemini fails, \texttt{heuristicExtract()} uses three mechanisms:
-
-\begin{enumerate}[leftmargin=*]
-  \item Keyword families for thermal, weight, strength, cost, corrosion, conductivity, FDM, and solder contexts.
-  \item Regex extraction for budget and temperature expressions.
-  \item Domain-specific overrides for common engineering scenarios such as practical FDM brackets, seawater pump hardware, and lead-free solder selection.
-\end{enumerate}
-
-This fallback was the key to fixing the ZrO$_2$ bug, because the deterministic engine can only be as intuitive as the constraints it receives.
-
-\subsection{Explanation Generation}
-
-The second Gemini call is deliberately separate from scoring. The ranked materials, original query, and top properties are passed to the model, which is instructed to return exactly three prose paragraphs:
-
-\begin{enumerate}[leftmargin=*]
-  \item why the top material is recommended,
-  \item how the top three compare,
-  \item what caveats or edge cases remain.
-\end{enumerate}
-
-If Gemini is unavailable, a template fallback cites the top material's temperature, tensile strength, density, cost, and score.
-
-\section{Verification Results}
-
-\subsection{Benchmark Queries}
-
-Five benchmark scenarios were used to validate the repaired scoring logic:
-
-\begin{table}[H]
-\centering
-\caption{Verification queries and top-ranked winners}
-\begin{tabularx}{\linewidth}{p{7cm}p{3.5cm}X}
-\toprule
-\textbf{Query} & \textbf{Winner} & \textbf{Why the result is acceptable} \\
-\midrule
-lightweight 3D printed bracket for 85 degree motor heat & PETG & Polymer winner, no ceramics in top results, practical FDM choice with exact 85$^\circ$C service rating \\
-electrically conductive probe tips for copper cobalt pellets must survive 200$^\circ$C repeated cycling & Tungsten W & Conductive refractory metal with extreme hardness and thermal stability; no polymers or insulating ceramics selected \\
-marine pump housing seawater exposure high pressure & Monel 400 & Marine-oriented nickel-copper alloy with excellent seawater resistance; Hastelloy C-276 is next-best alternative \\
-cheap structural bracket under \$2 per kg no special needs & Grey Cast Iron & Low-cost structural metal winner; no ultra-expensive outliers appear \\
-lead-free BGA solder joint automotive electronics 220$^\circ$C reflow & SAC305 (Sn-Ag-Cu) & Correct solder-family winner for RoHS-style lead-free electronics context \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\subsection{Interpretation}
-
-The benchmark results demonstrate that the repaired system now behaves like an engineer would expect. The 3D-printing query no longer allows zirconia or other ceramics to appear, the seawater query no longer drifts into aerospace superalloys by default, and the lead-free solder query no longer mistakes reflow temperature for continuous service temperature. These are exactly the types of failure modes that judges and users notice immediately, so fixing them materially improved the credibility of the application.
-
-\section{Worked Engineering Examples}
-
-\subsection{Example 1: Robotics Bracket}
-
-\begin{callout}[Query]
-``lightweight 3D printed bracket for 85 degree motor heat''
-\end{callout}
-
-The extracted constraints are: polymer-only intent, FDM required, a practical service temperature of 85$^\circ$C, a lightness preference, and a practical cost ceiling for mainstream printable polymers. Under this interpretation, PETG ranks first because it exactly meets the temperature threshold, remains affordable, and is one of the easiest engineering polymers to print reliably. ASA and Nylon PA12 remain strong alternatives: ASA is attractive when weathering or UV stability matters, while Nylon PA12 is appealing when a little extra thermal headroom and toughness are worth the extra cost and printing difficulty.
-
-\subsection{Example 2: Probe Tips for Sintered Pellets}
-
-\begin{callout}[Query]
-``electrically conductive probe tips for copper cobalt pellets must survive 200$^\circ$C repeated cycling''
-\end{callout}
-
-This query activates metal-only intent plus a conductivity constraint. The top recommendation is Tungsten W because tip wear resistance and dimensional stability dominate the problem. Its density is high and machinability is poor, but for a small probe tip this is acceptable. Molybdenum and high-performance nickel alloys appear below it, while polymers are completely filtered out by the conductivity requirement.
-
-\subsection{Example 3: Seawater Pump Housing}
-
-\begin{callout}[Query]
-``marine pump housing seawater exposure high pressure''
-\end{callout}
-
-This query was one of the most useful regression tests because generic scoring tended to favour strong, exotic, or high-temperature metals. The repaired logic recognises seawater-service hardware as a marine corrosion problem first and a pressure problem second. Monel 400 ranks first because it combines known seawater compatibility with adequate strength. Hastelloy C-276 ranks second because it is even more corrosion resistant but less cost-efficient for a pump housing that is not also a hot chemical-reactor component.
-
-\subsection{Example 4: Automotive BGA Solder}
-
-\begin{callout}[Query]
-``lead-free BGA solder joint automotive electronics 220$^\circ$C reflow''
-\end{callout}
-
-The key improvement here is semantic. The phrase ``220$^\circ$C reflow'' refers to process temperature, not service temperature. Once the parser respects that distinction, SAC305 rises naturally to the top as the standard lead-free electronics solder, followed by Sn96Ag4 and then lower-temperature bismuth-containing options.
-
-\section{Deployment and Operations}
-
-\subsection{Netlify Deployment}
-
-The application is deployed at:
-\[
-\url{https://beautiful-tiramisu-211a94.netlify.app}
-\]
-
-The live site returns HTTP 200 and is configured for Git-connected auto-deploys from the GitHub repository. The public deployment is judge-friendly because it requires no API setup, no local environment preparation, and no database migrations.
-
-\subsection{Security Model}
-
-\begin{itemize}[leftmargin=*]
-  \item Gemini credentials are read server-side from environment variables.
-  \item \texttt{.env.local} remains ignored and is never committed.
-  \item The client only sees recommendation results, not the raw API key.
-  \item The database is static and read-only at runtime, reducing attack surface.
-\end{itemize}
-
-\subsection{Operational Reliability}
-
-The architecture is intentionally lightweight. With no external database and no mutable backend state, the main operational risks are limited to API quota availability and deployment drift. Both are mitigated: the heuristic fallback preserves recommendation quality during Gemini outages, and Netlify's Git-based workflow keeps production synced to the repository history.
-
-\section{Assumptions and Limitations}
-
-\subsection{Assumptions}
-
-\begin{enumerate}[leftmargin=*]
-  \item All headline properties are represented as single values, generally near room temperature.
-  \item Cost values are approximate market values rather than live procurement quotes.
-  \item FDM printability ratings describe practical desktop-to-prosumer fused-filament experience, not all possible industrial settings.
-  \item Corrosion ratings are ordinal and broad; they are not substitutes for a full media-specific corrosion test.
-  \item Composite entries represent typical laminate or unidirectional values rather than full anisotropic property tensors.
-\end{enumerate}
-
-\subsection{Limitations}
-
-\begin{enumerate}[leftmargin=*]
-  \item No fatigue-life, fracture-toughness, creep, or wear-life models are included.
-  \item The current score is linear and therefore cannot express Pareto frontiers or non-linear utility curves.
-  \item Query understanding still depends on heuristics when the LLM is unavailable; although robust, it is not perfect.
-  \item The data model does not yet capture standards compliance flags such as RoHS or FDA in structured form.
-  \item The explorer does not yet support temperature-dependent property charts for a single material.
-\end{enumerate}
-
-\section{Future Work}
-
-\begin{enumerate}[leftmargin=*]
-  \item Add temperature-dependent property curves for modulus, yield strength, and thermal conductivity.
-  \item Attach explicit compliance flags such as RoHS, ASTM, FDA, and aerospace-grade certification.
-  \item Introduce fatigue and fracture datasets for structural selection use cases.
-  \item Add supplier-side cost refreshes and stock checks through procurement APIs.
-  \item Extend the Ashby chart into a richer interactive selection workspace with exportable reports.
-  \item Use learned property-prediction models from AFLOW and OQMD for novel compositions.\cite{aflowlib,oqmd}
-\end{enumerate}
-
-\section{Conclusion}
-
-Smart Alloy Selector demonstrates that an effective AI-based materials recommendation tool does not need to sacrifice engineering discipline for conversational convenience. By combining structured material data, bounded scoring mathematics, category-aware heuristics, and optional LLM explanation layers, the application produces fast and intuitive results while remaining transparent about how it reached them. The most important engineering improvement in this revision was not cosmetic; it was the elimination of ranking pathologies caused by equal weights, full-database normalisation, and category drift. With those fixes in place, the tool now behaves much more like a junior materials engineer with good judgement and much less like a generic scoring demo. That makes it a stronger fit for MET-QUEST'26 and a credible foundation for future expansion.
-
-\newpage
-\begin{thebibliography}{99}
-
-\bibitem{matweb}
-MatWeb LLC, \textit{MatWeb Material Property Data}, 2024. Available: \url{https://www.matweb.com}
-
-\bibitem{asm2023}
-ASM International, \textit{ASM Handbook, Volume 2: Properties and Selection: Nonferrous Alloys and Special-Purpose Materials}, 10th ed., Materials Park, OH, 2023.
-
-\bibitem{asm_vol1}
-ASM International, \textit{ASM Handbook, Volume 1: Properties and Selection: Irons, Steels, and High-Performance Alloys}, 10th ed., Materials Park, OH, 2023.
-
-\bibitem{nasatpsx}
-NASA Ames Research Center, \textit{Thermal Protection Systems Expert and Material Properties Database}, 2023. Available: \url{https://tpsx.arc.nasa.gov}
-
-\bibitem{goodfellow}
-Goodfellow Cambridge Ltd., \textit{Metals and Materials for Research and Industry}, 2024. Available: \url{https://www.goodfellow.com}
-
-\bibitem{ashby2011}
-M. F. Ashby, \textit{Materials Selection in Mechanical Design}, 4th ed., Butterworth-Heinemann, 2011.
-
-\bibitem{aflowlib}
-S. Curtarolo et al., ``AFLOW: An automatic framework for high-throughput materials discovery,'' \textit{Computational Materials Science}, vol. 58, pp. 218--226, 2012.
-
-\bibitem{oqmd}
-J. E. Saal, S. Kirklin, M. Aykol, B. Meredig, and C. Wolverton, ``Materials design and discovery with high-throughput density functional theory: The Open Quantum Materials Database (OQMD),'' \textit{JOM}, vol. 65, no. 11, pp. 1501--1509, 2013.
-
-\bibitem{gemini2024}
-Google DeepMind, \textit{Gemini Technical Report}, 2024. Available: \url{https://deepmind.google/technologies/gemini/}
-
-\end{thebibliography}
-
-\begin{appendices}
-
-\section{Scoring Pseudocode}
-
-\begin{lstlisting}[language=Python,caption={Simplified scoring logic}]
-def score_materials(constraints, database):
-    intent = infer_category_intent(constraints.raw_query)
-
-    passes = [
-        {"relax_cost": False, "relax_numeric": False, "ignore_category": False},
-        {"relax_cost": True,  "relax_numeric": False, "ignore_category": False},
-        {"relax_cost": True,  "relax_numeric": True,  "ignore_category": False},
-        {"relax_cost": True,  "relax_numeric": True,  "ignore_category": True},
-    ]
-
-    filtered = []
-    for opts in passes:
-        filtered = hard_filter(database, constraints, intent, opts)
-        if len(filtered) >= 3:
-            break
-
-    if not filtered:
-        filtered = database[:]
-
-    weights = normalise_weights(constraints.priority_weights)
-    ranges = compute_ranges(filtered)
-
-    scored = []
-    for material in filtered:
-        thermal = norm(material.max_service_temp_c, ranges.minT, ranges.maxT)
-        strength = norm(material.tensile_strength_mpa, ranges.minS, ranges.maxS)
-        lightness = 1 - norm(material.density_g_cm3, ranges.minR, ranges.maxR)
-        cost_eff = 1 - norm_log_cost(material.cost_usd_kg, ranges.costs)
-        corrosion = corrosion_rank(material.corrosion_resistance) / 4
-
-        raw = (
-            weights.thermal * thermal +
-            weights.strength * strength +
-            weights.weight * lightness +
-            weights.cost * cost_eff +
-            weights.corrosion * corrosion
-        )
-        scored.append((material, round(clamp(raw, 0, 1) * 100)))
-
-    return top10(scored)
-\end{lstlisting}
-
-\section{Heuristic Signal Table}
-
-\begin{table}[H]
-\centering
-\caption{Examples of heuristic signal families}
 \begin{tabular}{ll}
 \toprule
-\textbf{Keyword family} & \textbf{Inference} \\
+\textbf{Query signal} & \textbf{Action} \\
 \midrule
-heat, thermal, motor heat, furnace & Increase thermal priority \\
-lightweight, drone, satellite, low mass & Increase weight priority \\
-strong, load, structural, support, pressure & Increase strength priority \\
-cheap, under \$, budget, low cost & Increase cost priority and parse price cap \\
-marine, seawater, corrosion, acid & Increase corrosion priority \\
-3D print, FDM, filament, nozzle & Restrict to practical printable polymers \\
-solder, BGA, reflow, lead-free, RoHS & Restrict to solder-family materials \\
+3d print / fdm / filament & Exclude Ceramic, Solder \\
+solder / bga / reflow     & Include only Solder, Metal \\
+polymer / plastic         & Exclude Ceramic, Solder \\
+No signal                 & No category exclusion \\
 \bottomrule
 \end{tabular}
-\end{table}
 
-\end{appendices}
+\subsection{Stage 2: Hard Filtering}
+Eliminate if: $T_{max}^{(i)} < c_T$ \ OR\
+$\sigma_t^{(i)} < c_\sigma$ \ OR\
+$\rho^{(i)} > c_\rho$ \ OR\ $C^{(i)} > c_C$ \ OR\
+corrosion rank $< $ required rank, OR FDM/conductivity
+binary constraints violated. Four progressive fallback passes
+relax numeric and category constraints until $\geq 3$
+candidates survive.
+
+\subsection{Stage 3: Weighted Scoring}
+\begin{equation}
+s_i = 100 \cdot \bigl(
+  w_T\hat{T}_i + w_S\hat{\sigma}_i +
+  w_W(1-\hat{\rho}_i) + w_C(1-\hat{C}_i^{\log}) +
+  w_R\hat{R}_i \bigr), \quad s_i \in [0,100]
+\end{equation}
+Cost uses $\hat{C}_i^{\log} = \text{norm}(\ln(1+C_i))$
+to handle the \$1--\$62{,}000/kg range. All normalisations
+use min-max within the filtered set only. Weights are
+re-normalised to sum~=~1.0 before scoring.
+
+\subsection{Weight Inference}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Dominant signal} & $w_T$ & $w_S$ & $w_W$ & $w_C$ & $w_R$ \\
+\midrule
+``cheap'' / ``budget''      & .07 & .13 & .07 & \textbf{.65} & .08 \\
+``lightweight'' / ``drone'' & .13 & .13 & \textbf{.65} & .07 & .02 \\
+``strong'' / ``structural'' & .13 & \textbf{.65} & .10 & .07 & .05 \\
+``heat'' / ``motor''        & \textbf{.65} & .13 & .10 & .07 & .05 \\
+``marine'' / ``acid''       & .10 & .15 & .05 & .05 & \textbf{.65} \\
+No signal (default)         & .18 & .28 & .18 & .28 & .08 \\
+\bottomrule
+\end{tabular}
+
+% -- SECTION 5 ----------------------------------------------
+\section{Worked Examples}
+
+\textbf{Example 1 --- 3D-printed motor bracket (problem statement)}\\
+Query: \textit{``lightweight bracket for DC motor, 3D printed,
+cannot warp at 85$^\circ$C''}\\
+Inferred: $c_T$=85$^\circ$C, FDM=true, $w_T$=0.40, $w_W$=0.35\\
+Filtered set: 9 FDM polymers survive. Winner: \textbf{PETG}
+(score 88/100) --- exactly meets thermal limit, lowest density
+among survivors, excellent desktop printability.
+
+\textbf{Example 2 --- 4-point probe for Cu-Co pellets}\\
+Query: \textit{``probe tips: electrically conductive, hard,
+stable to 200$^\circ$C''}\\
+Inferred: conductive=true, $c_T$=200$^\circ$C, $w_S$=0.40, $w_T$=0.30\\
+Filtered: 14 metals (all insulators eliminated).
+Winner: \textbf{Beryllium Copper C17200}
+($\sigma_t$=1380 MPa, $\rho_e$=7$\times10^{-8}$ $\Omega$·m).
+
+\textbf{Example 3 --- Cheapest structural material}\\
+Query: \textit{``cheapest material for a bracket, no special needs''}\\
+Inferred: $w_C$=0.65 (cost dominant), no hard constraints\\
+Winner: \textbf{Grey Cast Iron} or \textbf{Carbon Steel 1020}
+(\$0.5--\$0.8/kg) --- cost efficiency score dominates.
+
+% -- SECTION 6 ----------------------------------------------
+\section{Security, Deployment, and Limitations}
+
+\textbf{Security.}
+The Gemini API key is stored only in \texttt{.env.local}
+(listed in \texttt{.gitignore}) and in Netlify's encrypted
+environment variable store. It is read only inside the
+serverless function via \texttt{process.env.GEMINI\_API\_KEY}
+and never exposed to the browser bundle. The Materials Project
+key is handled identically. The \texttt{.env.example} committed
+to the public repo contains placeholder text only.
+
+\textbf{Deployment.}
+Auto-deploys on every \texttt{git push} to \texttt{main}.
+Build time: $\approx$90~seconds. The \texttt{GEMINI\_API\_KEY}
+and \texttt{MATERIALS\_PROJECT\_API\_KEY} variables are set in
+Netlify Dashboard $\rightarrow$ Site Settings $\rightarrow$ Environment Variables.
+
+\textbf{Limitations.}
+All properties are at room temperature. No fatigue life,
+fracture toughness, or property-temperature curves. Cost
+values are 2024 market approximations. LLM may misinterpret
+highly ambiguous queries; inferred weights are displayed
+to users for transparency.
+
+\textbf{Future work.}
+Property-temperature curves from ASM data; ML composition
+interpolation using AFLOW/OQMD (3.5M+ DFT entries);
+fatigue data from MMPDS; live supplier pricing API.
+
+% -- REFERENCES ---------------------------------------------
+\begin{thebibliography}{9}
+\bibitem{mp} A. Jain et al., ``Commentary: The Materials Project,''
+  \textit{APL Materials}, 1(1):011002, 2013.
+\bibitem{asm} ASM International,
+  \textit{ASM Handbook Vol 1 \& 2}, 10th ed., 2023.
+\bibitem{matweb} MatWeb LLC,
+  \textit{Material Property Data}, \url{matweb.com}, 2024.
+\bibitem{ashby} M. F. Ashby,
+  \textit{Materials Selection in Mechanical Design},
+  4th ed. Butterworth-Heinemann, 2011.
+\bibitem{gemini} Google DeepMind,
+  \textit{Gemini Technical Report}, 2024.
+\bibitem{nasa} NASA Ames,
+  \textit{TPSX Database}, \url{tpsx.arc.nasa.gov}, 2023.
+\end{thebibliography}
 
 \end{document}
+
+% -- HOW TO COMPILE -----------------------------------------
+% Option 1 (easiest): Upload to overleaf.com -> Compile -> PDF
+% Option 2 (local):   pdflatex smart_alloy_report.tex

@@ -3,47 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateExplanation, extractConstraints } from "@/lib/gemini";
 import materialsDB from "@/lib/materials-db";
 import { scoreMaterials } from "@/lib/scoring";
+import { normalisePriorityWeights } from "@/lib/weights";
 import { UserConstraints } from "@/types";
-
-function normaliseWeights(
-  weights?: Partial<UserConstraints["priorityWeights"]>
-): UserConstraints["priorityWeights"] | undefined {
-  if (!weights) {
-    return undefined;
-  }
-
-  const merged = {
-    thermal: weights.thermal ?? 0,
-    strength: weights.strength ?? 0,
-    weight: weights.weight ?? 0,
-    cost: weights.cost ?? 0,
-    corrosion: weights.corrosion ?? 0
-  };
-  const total =
-    merged.thermal +
-    merged.strength +
-    merged.weight +
-    merged.cost +
-    merged.corrosion;
-
-  if (total <= 0) {
-    return {
-      thermal: 0.15,
-      strength: 0.3,
-      weight: 0.15,
-      cost: 0.3,
-      corrosion: 0.1
-    };
-  }
-
-  return {
-    thermal: merged.thermal / total,
-    strength: merged.strength / total,
-    weight: merged.weight / total,
-    cost: merged.cost / total,
-    corrosion: merged.corrosion / total
-  };
-}
 
 function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | undefined {
   if (!value || typeof value !== "object") {
@@ -81,7 +42,9 @@ function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | u
       typeof manual.needsFDMPrintability === "boolean"
         ? manual.needsFDMPrintability
         : undefined,
-    priorityWeights: normaliseWeights(manual.priorityWeights)
+    priorityWeights: manual.priorityWeights
+      ? normalisePriorityWeights(manual.priorityWeights)
+      : undefined
   };
 }
 
