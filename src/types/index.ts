@@ -57,4 +57,5 @@ export interface RecommendResponse {
   llmExplanation: string;
   inferredConstraints: UserConstraints;
   clarifications: string;
+  matchCount?: number;
 }

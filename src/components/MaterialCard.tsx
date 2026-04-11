@@ -1,211 +1,317 @@
 "use client";
 
-import { Check, ChevronDown } from "lucide-react";
+import { Check, Clipboard } from "lucide-react";
+import { useEffect, useState } from "react";
 
-import { cn } from "@/lib/utils";
 import { RankedMaterial } from "@/types";
 
 interface MaterialCardProps {
   material: RankedMaterial;
   rank: number;
-  isExpanded: boolean;
-  isSelected: boolean;
-  disableCompare: boolean;
+  selected: boolean;
   onToggle: () => void;
-  onCompareToggle: () => void;
+  compareDisabled?: boolean;
+  staggerIndex?: number;
 }
 
-function formatNumber(value: number, digits = 0): string {
+function formatNumber(value: number, digits = 0) {
   return value.toLocaleString(undefined, {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: digits > 0 ? Math.min(digits, 1) : 0
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
   });
 }
 
-function formatNullable(value: number | null, suffix = "", digits = 0): string {
-  if (value === null) {
-    return "—";
+function categoryTone(category: RankedMaterial["category"]) {
+  if (category === "Metal") {
+    return "border-blue-800 bg-[#1E3A5F] text-sky-400";
   }
-
-  return `${formatNumber(value, digits)}${suffix}`;
+  if (category === "Polymer") {
+    return "border-green-800 bg-[#14532D] text-emerald-400";
+  }
+  if (category === "Ceramic") {
+    return "border-violet-900 bg-[#3B1F6E] text-violet-400";
+  }
+  if (category === "Composite") {
+    return "border-orange-900 bg-[#44240C] text-orange-400";
+  }
+  return "border-rose-900 bg-[#3B1111] text-rose-400";
 }
 
-function categoryBadgeClass(category: RankedMaterial["category"]): string {
-  switch (category) {
-    case "Metal":
-      return "border-sky-500/40 bg-sky-500/10 text-sky-300";
-    case "Polymer":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
-    case "Ceramic":
-      return "border-violet-500/40 bg-violet-500/10 text-violet-300";
-    case "Composite":
-      return "border-cyan-500/40 bg-cyan-500/10 text-cyan-300";
-    case "Solder":
-      return "border-rose-500/40 bg-rose-500/10 text-rose-300";
-    default:
-      return "border-zinc-600 bg-zinc-800 text-zinc-300";
-  }
-}
-
-function rankBadgeClass(rank: number): string {
+function rankTone(rank: number) {
   if (rank === 1) {
-    return "border border-amber-500/50 bg-amber-500/20 text-amber-400";
+    return "bg-brand text-brand-subtle";
   }
-
   if (rank === 2) {
-    return "bg-zinc-700/50 text-zinc-300";
+    return "bg-surface-800 text-surface-400";
   }
-
-  if (rank === 3) {
-    return "bg-zinc-800 text-zinc-400";
-  }
-
-  return "bg-zinc-800/80 text-zinc-400";
+  return "bg-[#1F1F23] text-surface-600";
 }
 
-function scoreBarClass(score: number): string {
+function scoreTone(score: number) {
   if (score >= 80) {
-    return "bg-amber-500";
+    return "#F59E0B";
   }
-
   if (score >= 60) {
-    return "bg-sky-400";
+    return "#38BDF8";
   }
+  return "#34D399";
+}
 
-  return "bg-zinc-500";
+function costTone(cost: number) {
+  if (cost < 10) {
+    return "#34D399";
+  }
+  if (cost <= 50) {
+    return "#A1A1AA";
+  }
+  return "#FB7185";
 }
 
 export default function MaterialCard({
   material,
   rank,
-  isExpanded,
-  isSelected,
-  disableCompare,
+  selected,
   onToggle,
-  onCompareToggle
-}: MaterialCardProps): JSX.Element {
+  compareDisabled = false,
+  staggerIndex = 0
+}: MaterialCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [barReady, setBarReady] = useState(false);
+  const [displayScore, setDisplayScore] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setBarReady(true), 80);
+    const started = performance.now();
+    let frame = 0;
+
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - started) / 700);
+      setDisplayScore(Math.round(material.score * progress));
+      if (progress < 1) {
+        frame = window.requestAnimationFrame(step);
+      }
+    };
+
+    frame = window.requestAnimationFrame(step);
+
+    return () => {
+      window.clearTimeout(timeout);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [material.score]);
+
+  async function copySummary() {
+    try {
+      await navigator.clipboard.writeText(
+        `Material: ${material.name} | Score: ${material.score}/100 | Max Temp: ${material.max_service_temp_c}°C | Density: ${material.density_g_cm3} g/cm³ | Cost: $${material.cost_usd_kg}/kg`
+      );
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
   const properties = [
     ["Subcategory", material.subcategory],
-    ["Density", `${formatNumber(material.density_g_cm3, 2)} g/cm³`],
-    ["Tensile Strength", `${formatNumber(material.tensile_strength_mpa)} MPa`],
     ["Yield Strength", `${formatNumber(material.yield_strength_mpa)} MPa`],
     ["Elastic Modulus", `${formatNumber(material.elastic_modulus_gpa, 1)} GPa`],
-    ["Hardness", formatNullable(material.hardness_vickers, " HV")],
-    ["Thermal Conductivity", `${formatNumber(material.thermal_conductivity_w_mk, 2)} W/m·K`],
-    ["Specific Heat", `${formatNumber(material.specific_heat_j_gk, 3)} J/g·K`],
-    ["Melting Point", formatNullable(material.melting_point_c, "°C")],
-    ["Glass Transition", formatNullable(material.glass_transition_c, "°C")],
-    ["Max Service Temp", `${formatNumber(material.max_service_temp_c)}°C`],
-    ["Thermal Expansion", `${formatNumber(material.thermal_expansion_ppm_k, 2)} ppm/K`],
-    ["Electrical Resistivity", `${material.electrical_resistivity_ohm_m.toExponential(2)} Ω·m`],
+    ["Hardness", material.hardness_vickers === null ? "—" : `${material.hardness_vickers} HV`],
+    [
+      "Thermal Conductivity",
+      `${formatNumber(material.thermal_conductivity_w_mk, 2)} W/m·K`
+    ],
+    ["Specific Heat", `${formatNumber(material.specific_heat_j_gk, 2)} J/g·K`],
+    [
+      "Melting Point",
+      material.melting_point_c === null ? "—" : `${material.melting_point_c}°C`
+    ],
+    [
+      "Glass Transition",
+      material.glass_transition_c === null ? "—" : `${material.glass_transition_c}°C`
+    ],
+    [
+      "Thermal Expansion",
+      `${formatNumber(material.thermal_expansion_ppm_k, 1)} ppm/K`
+    ],
+    [
+      "Resistivity",
+      `${material.electrical_resistivity_ohm_m.toExponential(2)} Ω·m`
+    ],
     ["Corrosion", material.corrosion_resistance],
     ["Machinability", material.machinability],
-    ["FDM Printability", material.printability_fdm],
-    ["Cost", `$${formatNumber(material.cost_usd_kg, 2)}/kg`]
+    ["FDM Printability", material.printability_fdm]
   ];
 
   return (
-    <article className="rounded-xl border border-zinc-700 bg-zinc-900 p-4 transition hover:border-zinc-500 hover:shadow-glow">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", rankBadgeClass(rank))}>
-              #{rank}
-            </span>
-            <span className={cn("rounded-full border px-2 py-0.5 text-xs", categoryBadgeClass(material.category))}>
-              {material.category}
-            </span>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-zinc-100">{material.name}</h3>
-            <p className="text-sm text-zinc-400">{material.subcategory}</p>
-          </div>
+    <article
+      className={`fade-slide-up rounded-xl border bg-surface-900 p-4 transition-all duration-200 hover:-translate-y-[1px] hover:border-surface-700 ${
+        selected
+          ? "border-amber-500/50 shadow-[0_0_0_1px_rgba(245,158,11,0.1)]"
+          : rank === 1
+            ? "border-amber-500/40 shadow-[0_0_0_1px_rgba(245,158,11,0.1),inset_0_1px_0_rgba(245,158,11,0.05)]"
+            : "border-surface-800"
+      }`}
+      style={{ animationDelay: `${staggerIndex * 60}ms` }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${rankTone(rank)}`}
+          >
+            #{rank}
+          </span>
+          <h3 className="mt-1.5 text-[15px] font-semibold text-zinc-100">{material.name}</h3>
+          <span
+            className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] ${categoryTone(material.category)}`}
+          >
+            {material.category}
+          </span>
         </div>
 
-        <label
-          className={cn(
-            "inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors",
-            isSelected
-              ? "border-amber-500 bg-amber-500/10 text-amber-400"
-              : "border-zinc-700 bg-zinc-800 text-zinc-400",
-            disableCompare && !isSelected ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-          )}
-          onClick={(event) => event.stopPropagation()}
-          title={disableCompare && !isSelected ? "Select up to four materials for comparison." : "Compare material"}
-        >
-          <input
-            type="checkbox"
-            checked={isSelected}
-            disabled={disableCompare && !isSelected}
-            onChange={onCompareToggle}
-            className="sr-only"
-          />
-          <Check className="h-4 w-4" />
-        </label>
+        <div className="flex items-start gap-2">
+          <label
+            className={`inline-flex items-center gap-1.5 text-[10px] text-surface-600 ${
+              compareDisabled && !selected ? "cursor-not-allowed" : "cursor-pointer"
+            }`}
+            title={compareDisabled && !selected ? "Max 4 for comparison" : "Compare"}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span>Compare</span>
+            <input
+              type="checkbox"
+              checked={selected}
+              disabled={compareDisabled && !selected}
+              onChange={onToggle}
+              className="h-3.5 w-3.5 rounded border-surface-700 bg-surface-900 accent-amber-500"
+            />
+          </label>
+          <div className="text-right">
+            <div
+              className="font-mono text-[22px] font-bold"
+              style={{ color: scoreTone(material.score) }}
+            >
+              {displayScore}
+            </div>
+            <div className="text-[10px] text-surface-700">/100</div>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-4 space-y-2">
-        <div className="flex items-center justify-between text-xs uppercase tracking-wide text-zinc-500">
-          <span>Score</span>
-          <span className="font-mono text-amber-400">{material.score.toFixed(1)}</span>
-        </div>
-        <div className="h-1.5 rounded-full bg-zinc-700">
-          <div
-            className={cn("h-1.5 rounded-full transition-[width] duration-700 ease-out", scoreBarClass(material.score))}
-            style={{ width: `${Math.min(100, material.score)}%` }}
-          />
-        </div>
+      <div className="my-3 h-[2px] rounded-full bg-surface-800">
+        <div
+          className="h-[2px] rounded-full transition-[width] duration-700"
+          style={{
+            backgroundColor: scoreTone(material.score),
+            width: barReady ? `${material.score}%` : "0%"
+          }}
+        />
       </div>
 
-      <button type="button" className="mt-4 w-full text-left" onClick={onToggle}>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <button
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+        className="w-full text-left"
+      >
+        <div className="grid grid-cols-2 gap-1">
           {[
-            { label: "Max Temp", value: `${formatNumber(material.max_service_temp_c)}°C` },
-            { label: "Density", value: `${formatNumber(material.density_g_cm3, 2)} g/cm³` },
-            { label: "Tensile", value: `${formatNumber(material.tensile_strength_mpa)} MPa` },
-            { label: "Cost", value: `$${formatNumber(material.cost_usd_kg, 2)}/kg` }
-          ].map((pill) => (
-            <div key={pill.label} className="rounded-xl border border-zinc-800 bg-zinc-800/70 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-zinc-500">{pill.label}</p>
-              <p className="mt-1 text-sm font-medium text-zinc-100">{pill.value}</p>
+            { label: "Max Temp", value: `${material.max_service_temp_c}°C`, color: "#F4F4F5" },
+            {
+              label: "Density",
+              value: `${formatNumber(material.density_g_cm3, 2)} g/cm³`,
+              color: "#F4F4F5"
+            },
+            {
+              label: "Tensile",
+              value: `${formatNumber(material.tensile_strength_mpa)} MPa`,
+              color: "#F4F4F5"
+            },
+            {
+              label: "Cost",
+              value: `$${formatNumber(material.cost_usd_kg, 2)}/kg`,
+              color: costTone(material.cost_usd_kg)
+            }
+          ].map((property) => (
+            <div
+              key={property.label}
+              className="rounded-md border border-brand-subtle bg-[#0C0A09] px-2 py-1.5"
+            >
+              <div className="text-[9px] uppercase tracking-[0.08em] text-surface-700">
+                {property.label}
+              </div>
+              <div
+                className="font-mono text-[12px] font-medium"
+                style={{ color: property.color }}
+              >
+                {property.value}
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-zinc-400">
-          <span>{isExpanded ? "Hide full property sheet" : "Show full property sheet"}</span>
-          <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-180" : "rotate-0")} />
+        <div className="mt-2 rounded-md border-l-2 border-surface-800 bg-[#0C0A09] px-2 py-1.5 text-[11px] leading-[1.5] text-surface-600">
+          {material.matchReason}
         </div>
       </button>
 
-      {isExpanded ? (
-        <div className="mt-4 space-y-4 border-t border-zinc-800 pt-4">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2">
-            {properties.map(([label, value]) => (
-              <div key={label} className="flex items-center justify-between gap-4 border-b border-zinc-800/80 py-2 text-sm">
-                <span className="text-zinc-500">{label}</span>
-                <span className="text-right text-zinc-200">{value}</span>
+      <div
+        className="overflow-hidden transition-[max-height] duration-300 ease-out"
+        style={{ maxHeight: expanded ? 500 : 0 }}
+      >
+        <div className="pt-3">
+          <div className="mb-2 flex justify-end">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                void copySummary();
+              }}
+              className="inline-flex items-center gap-1 rounded-md border border-surface-700 px-2 py-1 text-[10px] text-surface-600 transition hover:text-surface-200"
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Clipboard className="h-3 w-3" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <div className="grid gap-x-3 md:grid-cols-2">
+            {properties.map(([label, value], index) => (
+              <div
+                key={label}
+                className={`flex items-center justify-between px-2 py-1 text-[11px] ${
+                  index % 2 === 0 ? "bg-[#0C0A09]" : "bg-transparent"
+                }`}
+              >
+                <span className="text-surface-600">{label}</span>
+                <span className="font-mono text-surface-200">{value}</span>
               </div>
             ))}
           </div>
 
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-            <p className="text-xs uppercase tracking-wide text-amber-400">Why Recommended</p>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-200">{material.matchReason}</p>
+          <div className="mt-3 rounded-md border-l-2 border-brand bg-[#0C0A09] px-2 py-2">
+            <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-brand">
+              Why Recommended
+            </div>
+            <p className="mt-1 text-[11px] leading-[1.5] text-surface-400">
+              {material.matchReason}
+            </p>
           </div>
 
-          <div className="flex items-center justify-between gap-3 text-xs text-zinc-500">
-            <p className="flex flex-wrap gap-1">
-              {material.tags.map((tag) => (
-                <span key={tag} className="rounded-full border border-zinc-700 px-2 py-0.5 text-zinc-400">
-                  {tag}
-                </span>
-              ))}
-            </p>
-            <span className="text-right">{material.data_source}</span>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {material.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-surface-800 px-2 py-0.5 text-[10px] text-surface-600"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-3 text-right text-[10px] italic text-surface-700">
+            Source: {material.data_source}
           </div>
         </div>
-      ) : null}
+      </div>
     </article>
   );
 }

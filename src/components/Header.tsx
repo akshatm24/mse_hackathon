@@ -1,76 +1,90 @@
 "use client";
 
-import Link from "next/link";
-import { Menu, X } from "lucide-react";
-import { useState } from "react";
-
-const NAV_ITEMS = [
-  { href: "#how-it-works", label: "How It Works" },
-  { href: "#database", label: "Database" },
-  { href: "#github-launch", label: "GitHub" }
-];
-
-function AtomMark(): JSX.Element {
+export default function Header() {
   return (
-    <svg viewBox="0 0 32 32" className="h-9 w-9 text-amber-400" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="5.5" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="16" cy="16" r="2" fill="currentColor" />
-      <path d="M16 2.8v5.4M16 23.8v5.4M2.8 16h5.4M23.8 16h5.4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-      <path d="M6.1 6.1l3.8 3.8M22.1 22.1l3.8 3.8M25.9 6.1l-3.8 3.8M9.9 22.1l-3.8 3.8" stroke="currentColor" strokeLinecap="round" strokeOpacity="0.4" strokeWidth="1.3" />
-    </svg>
-  );
-}
-
-export default function Header(): JSX.Element {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  return (
-    <header className="fixed inset-x-0 top-0 z-40 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="#top" className="flex items-center gap-3">
-          <AtomMark />
-          <div>
-            <p className="text-sm font-semibold text-zinc-100 sm:text-base">Smart Alloy Selector</p>
-            <div className="mt-1 inline-flex items-center rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-amber-400">
+    <header className="fixed left-0 right-0 top-0 z-50 h-[52px] border-b border-surface-800 bg-surface-950/90 backdrop-blur-md">
+      <div
+        className="absolute left-0 right-0 top-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, #F59E0B 30%, #F59E0B 70%, transparent)"
+        }}
+      />
+      <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4">
+        <a href="#top" className="flex items-center gap-3">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="4" stroke="#F59E0B" strokeWidth="1.5" />
+            <circle cx="12" cy="12" r="1.5" fill="#F59E0B" />
+            <line
+              x1="12"
+              y1="2"
+              x2="12"
+              y2="7"
+              stroke="#F59E0B"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <line
+              x1="12"
+              y1="17"
+              x2="12"
+              y2="22"
+              stroke="#F59E0B"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <line
+              x1="2"
+              y1="12"
+              x2="7"
+              y2="12"
+              stroke="#F59E0B"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <line
+              x1="17"
+              y1="12"
+              x2="22"
+              y2="12"
+              stroke="#F59E0B"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-semibold text-surface-200">
+              Smart Alloy Selector
+            </span>
+            <span
+              className="rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-[0.08em] text-brand"
+              style={{
+                background: "linear-gradient(90deg, #1C1917, #292524)",
+                borderColor: "#292524"
+              }}
+            >
               MET-QUEST&apos;26
-            </div>
+            </span>
           </div>
-        </Link>
+        </a>
 
-        <nav className="hidden items-center gap-6 text-sm text-zinc-400 md:flex">
-          {NAV_ITEMS.map((item) => (
-            <Link key={item.href} href={item.href} className="transition-colors hover:text-zinc-100">
-              {item.label}
-            </Link>
-          ))}
+        <nav className="hidden items-center gap-6 text-[11px] text-zinc-500 md:flex">
+          <a href="#query" className="transition-colors hover:text-zinc-100">
+            How It Works
+          </a>
+          <a href="#database" className="transition-colors hover:text-zinc-100">
+            Database
+          </a>
+          <a
+            href="https://github.com/akshatm24/mse_hackathon"
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-zinc-100"
+          >
+            GitHub ↗
+          </a>
         </nav>
-
-        <button
-          type="button"
-          className="inline-flex rounded-lg border border-zinc-700 p-2 text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100 md:hidden"
-          onClick={() => setMenuOpen((current) => !current)}
-          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-        >
-          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
       </div>
-
-      {menuOpen ? (
-        <nav className="border-t border-zinc-800 bg-zinc-950 px-4 py-3 md:hidden">
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 text-sm text-zinc-300">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-lg border border-zinc-800 px-3 py-2 transition-colors hover:border-zinc-600 hover:text-zinc-100"
-                onClick={() => setMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </nav>
-      ) : null}
     </header>
   );
 }

@@ -1,87 +1,108 @@
 "use client";
 
-import { SendHorizontal } from "lucide-react";
-import { useState } from "react";
+import { MessageSquareText, SendHorizontal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-import { ChatMessage } from "@/types";
+import { ChatMessage, RankedMaterial } from "@/types";
 
 interface ChatInterfaceProps {
-  messages: ChatMessage[];
-  loading: boolean;
-  onSend: (message: string) => void;
+  initialQuery: string;
+  initialResults: RankedMaterial[];
 }
 
-const SUGGESTED_PROMPTS = [
+const suggestedPrompts = [
   "Compare cost vs performance of top 3",
   "Which is easiest to machine?",
   "How do these behave at cryogenic temperatures?",
-  "What's the fatigue life of the top pick?"
+  "What is the fatigue life of the top pick?"
 ];
 
-export default function ChatInterface({ messages, loading, onSend }: ChatInterfaceProps): JSX.Element {
+export default function ChatInterface({
+  initialQuery,
+  initialResults
+}: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<Array<{ role: string; parts: string }>>([]);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
-  function submitMessage(message: string): void {
-    const trimmed = message.trim();
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
-    if (trimmed.length === 0 || loading) {
+  async function sendMessage(nextMessage: string) {
+    const trimmed = nextMessage.trim();
+    if (!trimmed || loading) {
       return;
     }
 
-    onSend(trimmed);
+    const nextMessages = [...messages, { role: "user" as const, content: trimmed }];
+    const requestHistory = [...history, { role: "user", parts: trimmed }];
+    setMessages(nextMessages);
+    setHistory(requestHistory);
     setInput("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/recommend", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query: trimmed, history: requestHistory })
+      });
+
+      const data = (await response.json()) as {
+        llmExplanation?: string;
+        error?: string;
+      };
+
+      const assistantReply =
+        response.ok && data.llmExplanation
+          ? data.llmExplanation
+          : `Unable to answer that follow-up right now. ${data.error ?? "Please try again."}`;
+
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: assistantReply }
+      ]);
+      setHistory((current) => [
+        ...current,
+        { role: "model", parts: assistantReply }
+      ]);
+    } catch {
+      const fallback = `I couldn't reach the recommendation API just now. Based on the current shortlist, ${
+        initialResults[0]?.name ?? "the top candidate"
+      } is still the strongest starting point for "${initialQuery}".`;
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: fallback }
+      ]);
+      setHistory((current) => [...current, { role: "model", parts: fallback }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-700 bg-zinc-900 p-4">
-      <div className="mb-4">
-        <p className="text-xs uppercase tracking-wide text-zinc-500">Follow-up Chat</p>
-        <h3 className="mt-2 text-lg font-medium text-zinc-100">Ask for trade-offs, processability, or edge-case behavior</h3>
+    <section className="mx-auto max-w-[780px] overflow-hidden rounded-2xl border border-surface-800 bg-surface-900">
+      <div className="flex items-center justify-between border-b border-surface-800 px-4 py-3">
+        <div className="flex items-center gap-2 text-[12px] text-surface-400">
+          <MessageSquareText className="h-4 w-4 text-brand" />
+          <span>Follow-up questions</span>
+        </div>
+        <span className="text-[9px] text-surface-700">Powered by Gemini</span>
       </div>
 
-      <div className="space-y-3">
-        {messages.map((message, index) => (
-          <div
-            key={`${message.role}-${index}`}
-            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-3xl rounded-2xl border px-4 py-3 text-sm leading-relaxed ${
-                message.role === "user"
-                  ? "border-amber-500/30 bg-amber-500/10 text-zinc-100"
-                  : "border-zinc-700 bg-zinc-800 text-zinc-200"
-              }`}
-            >
-              {message.content}
-            </div>
-          </div>
-        ))}
-
-        {loading ? (
-          <div className="flex justify-start">
-            <div className="rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3">
-              <div className="flex items-center gap-1.5">
-                {[0, 1, 2].map((dot) => (
-                  <span
-                    key={dot}
-                    className="h-2 w-2 rounded-full bg-amber-400 animate-pulse-dot"
-                    style={{ animationDelay: `${dot * 120}ms` }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {messages.length <= 2 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {SUGGESTED_PROMPTS.map((prompt) => (
+      {messages.length === 0 ? (
+        <div className="flex flex-wrap gap-1.5 px-4 py-3">
+          {suggestedPrompts.map((prompt) => (
             <button
               key={prompt}
               type="button"
-              onClick={() => submitMessage(prompt)}
-              className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
+              onClick={() => void sendMessage(prompt)}
+              className="rounded-full border border-surface-700 bg-surface-800 px-3 py-1.5 text-[11px] text-surface-400 transition hover:border-surface-600 hover:text-zinc-100"
             >
               {prompt}
             </button>
@@ -89,26 +110,70 @@ export default function ChatInterface({ messages, loading, onSend }: ChatInterfa
         </div>
       ) : null}
 
+      <div className="max-h-[320px] space-y-3 overflow-y-auto px-4 py-3">
+        {messages.map((message, index) => (
+          <div
+            key={`${message.role}-${index}`}
+            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div className={`${message.role === "user" ? "max-w-[75%]" : "max-w-[85%]"}`}>
+              {message.role === "assistant" ? (
+                <div className="mb-1 text-[9px] text-surface-700">Gemini</div>
+              ) : null}
+              <div
+                className={`text-[13px] leading-[1.65] ${
+                  message.role === "user"
+                    ? "rounded-[10px_10px_2px_10px] border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-zinc-100"
+                    : "rounded-[2px_10px_10px_10px] border border-surface-700 bg-surface-800 px-3.5 py-2.5 text-surface-400"
+                }`}
+              >
+                {message.content}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {loading ? (
+          <div className="flex justify-start">
+            <div className="max-w-[85%]">
+              <div className="mb-1 text-[9px] text-surface-700">Gemini</div>
+              <div className="flex items-center gap-1 rounded-[2px_10px_10px_10px] border border-surface-700 bg-surface-800 px-3.5 py-3">
+                {[0, 1, 2].map((dot) => (
+                  <span
+                    key={dot}
+                    className="h-1.5 w-1.5 rounded-full bg-surface-600"
+                    style={{
+                      animation: "bounce 1.2s infinite",
+                      animationDelay: `${dot * 200}ms`
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        <div ref={endRef} />
+      </div>
+
       <form
-        className="mt-4 flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 sm:flex-row"
+        className="flex items-center gap-2 border-t border-surface-800 px-4 py-3"
         onSubmit={(event) => {
           event.preventDefault();
-          submitMessage(input);
+          void sendMessage(input);
         }}
       >
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="Ask a follow-up about processability, fatigue, corrosion, or manufacturing trade-offs"
-          className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+          placeholder="Ask a follow-up question..."
+          className="flex-1 rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-[13px] text-zinc-100 outline-none transition focus:border-amber-500/40"
         />
         <button
           type="submit"
-          disabled={loading || input.trim().length === 0}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-semibold text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!input.trim() || loading}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-brand-subtle transition hover:bg-amber-400 disabled:bg-surface-800 disabled:text-surface-700"
         >
-          <SendHorizontal className="h-4 w-4" />
-          Send
+          <SendHorizontal className="h-3.5 w-3.5" />
         </button>
       </form>
     </section>

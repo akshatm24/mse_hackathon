@@ -1,35 +1,48 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"],
-  content: ["./src/**/*.{ts,tsx}"],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
-        amber: {
-          400: "#fbbf24",
-          500: "#f59e0b"
+        brand: {
+          DEFAULT: "#F59E0B",
+          dim: "#B45309",
+          subtle: "#1C1917",
+          border: "#292524"
         },
-        zinc: {
-          950: "#09090b"
+        surface: {
+          950: "#09090B",
+          900: "#18181B",
+          800: "#27272A",
+          700: "#3F3F46",
+          600: "#52525B",
+          400: "#A1A1AA",
+          200: "#E4E4E7"
+        },
+        score: {
+          high: "#F59E0B",
+          mid: "#38BDF8",
+          low: "#34D399"
+        },
+        property: {
+          thermal: "#F59E0B",
+          weight: "#38BDF8",
+          strength: "#34D399",
+          cost: "#A78BFA",
+          corrosion: "#FB7185"
+        },
+        status: {
+          best: "#34D399",
+          worst: "#FB7185"
         }
+      },
+      fontFamily: {
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"]
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(245, 158, 11, 0.18), 0 18px 60px rgba(245, 158, 11, 0.12)"
-      },
-      keyframes: {
-        shimmer: {
-          "0%": { backgroundPosition: "-200% 0" },
-          "100%": { backgroundPosition: "200% 0" }
-        },
-        pulseDot: {
-          "0%, 80%, 100%": { opacity: "0.25", transform: "translateY(0)" },
-          "40%": { opacity: "1", transform: "translateY(-2px)" }
-        }
-      },
-      animation: {
-        shimmer: "shimmer 1.6s linear infinite",
-        "pulse-dot": "pulseDot 1s ease-in-out infinite"
+        glow: "0 0 0 1px rgba(245, 158, 11, 0.12), 0 24px 80px rgba(0, 0, 0, 0.45)"
       }
     }
   },

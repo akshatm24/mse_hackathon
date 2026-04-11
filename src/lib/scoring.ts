@@ -8,231 +8,191 @@ export const DEFAULT_PRIORITY_WEIGHTS: UserConstraints["priorityWeights"] = {
   corrosion: 0.2
 };
 
-export const CORROSION_RANKS = {
-  poor: 1,
-  fair: 2,
-  good: 3,
-  excellent: 4
-} as const;
-
+export const corrosionRank = { excellent: 4, good: 3, fair: 2, poor: 1 } as const;
+export const CORROSION_RANKS = corrosionRank;
 export const QUALITY_RANKS = {
-  "n/a": 0,
-  poor: 1,
-  fair: 2,
+  excellent: 4,
   good: 3,
-  excellent: 4
+  fair: 2,
+  poor: 1,
+  "n/a": 0
 } as const;
-
-const THERMALLY_CONDUCTIVE_THRESHOLD_W_MK = 10;
-
-function safeDivide(value: number, maxValue: number): number {
-  if (maxValue <= 0) {
-    return 0;
-  }
-
-  return value / maxValue;
-}
 
 export function normalisePriorityWeights(
   weights?: Partial<UserConstraints["priorityWeights"]>
 ): UserConstraints["priorityWeights"] {
-  const merged = {
-    ...DEFAULT_PRIORITY_WEIGHTS,
-    ...weights
-  };
+  const merged = { ...DEFAULT_PRIORITY_WEIGHTS, ...weights };
+  const total = Object.values(merged).reduce((sum, value) => sum + Math.max(0, value), 0);
 
-  const entries = Object.entries(merged) as Array<[
-    keyof UserConstraints["priorityWeights"],
-    number
-  ]>;
-  const positiveTotal = entries.reduce((total, [, value]) => total + Math.max(0, value), 0);
-
-  if (positiveTotal <= 0) {
+  if (total <= 0) {
     return { ...DEFAULT_PRIORITY_WEIGHTS };
   }
 
-  return entries.reduce<UserConstraints["priorityWeights"]>((accumulator, [key, value]) => {
-    accumulator[key] = Math.max(0, value) / positiveTotal;
-    return accumulator;
-  }, { ...DEFAULT_PRIORITY_WEIGHTS });
+  return {
+    strength: Math.max(0, merged.strength) / total,
+    thermal: Math.max(0, merged.thermal) / total,
+    weight: Math.max(0, merged.weight) / total,
+    cost: Math.max(0, merged.cost) / total,
+    corrosion: Math.max(0, merged.corrosion) / total
+  };
 }
 
 export function buildDefaultConstraints(rawQuery: string): UserConstraints {
   return {
-    rawQuery,
-    priorityWeights: { ...DEFAULT_PRIORITY_WEIGHTS }
+    priorityWeights: { ...DEFAULT_PRIORITY_WEIGHTS },
+    rawQuery
   };
 }
 
 export function mergeConstraints(
-  inferred: UserConstraints,
-  manual?: Partial<UserConstraints>
+  base: UserConstraints,
+  overrides?: Partial<UserConstraints>
 ): UserConstraints {
-  if (!manual) {
+  if (!overrides) {
     return {
-      ...inferred,
-      priorityWeights: normalisePriorityWeights(inferred.priorityWeights)
+      ...base,
+      priorityWeights: normalisePriorityWeights(base.priorityWeights)
     };
   }
 
   return {
-    maxTemperature_c: manual.maxTemperature_c ?? inferred.maxTemperature_c,
-    minTensileStrength_mpa: manual.minTensileStrength_mpa ?? inferred.minTensileStrength_mpa,
-    maxDensity_g_cm3: manual.maxDensity_g_cm3 ?? inferred.maxDensity_g_cm3,
-    maxCost_usd_kg: manual.maxCost_usd_kg ?? inferred.maxCost_usd_kg,
-    corrosionRequired: manual.corrosionRequired ?? inferred.corrosionRequired,
-    electricallyConductive: manual.electricallyConductive ?? inferred.electricallyConductive,
-    thermallyConductive: manual.thermallyConductive ?? inferred.thermallyConductive,
-    needsFDMPrintability: manual.needsFDMPrintability ?? inferred.needsFDMPrintability,
-    priorityWeights: normalisePriorityWeights(manual.priorityWeights ?? inferred.priorityWeights),
-    rawQuery: manual.rawQuery ?? inferred.rawQuery
+    maxTemperature_c: overrides.maxTemperature_c ?? base.maxTemperature_c,
+    minTensileStrength_mpa:
+      overrides.minTensileStrength_mpa ?? base.minTensileStrength_mpa,
+    maxDensity_g_cm3: overrides.maxDensity_g_cm3 ?? base.maxDensity_g_cm3,
+    maxCost_usd_kg: overrides.maxCost_usd_kg ?? base.maxCost_usd_kg,
+    corrosionRequired: overrides.corrosionRequired ?? base.corrosionRequired,
+    electricallyConductive:
+      overrides.electricallyConductive ?? base.electricallyConductive,
+    thermallyConductive:
+      overrides.thermallyConductive ?? base.thermallyConductive,
+    needsFDMPrintability:
+      overrides.needsFDMPrintability ?? base.needsFDMPrintability,
+    priorityWeights: normalisePriorityWeights(
+      overrides.priorityWeights ?? base.priorityWeights
+    ),
+    rawQuery: overrides.rawQuery ?? base.rawQuery
   };
 }
 
-function passesHardFilters(
-  material: Material,
+function buildReason(m: Material, w: UserConstraints["priorityWeights"]): string {
+  const factors: { label: string; weight: number }[] = [
+    { label: "thermal performance", weight: w.thermal },
+    { label: "strength-to-weight", weight: w.strength },
+    { label: "low density", weight: w.weight },
+    { label: "cost efficiency", weight: w.cost },
+    { label: "corrosion resistance", weight: w.corrosion }
+  ];
+  const top = factors.sort((a, b) => b.weight - a.weight).slice(0, 2);
+  return `Strong ${top[0].label} and ${top[1].label} for ${m.subcategory} class.`;
+}
+
+export function filterMaterialsForConstraints(
   constraints: UserConstraints,
-  costMultiplier = 1
-): boolean {
-  const requiredTemp = constraints.maxTemperature_c ?? 0;
-  const requiredStrength = constraints.minTensileStrength_mpa ?? 0;
-  const maxDensity = constraints.maxDensity_g_cm3 ?? Number.POSITIVE_INFINITY;
-  const maxCost = constraints.maxCost_usd_kg
-    ? constraints.maxCost_usd_kg * costMultiplier
-    : Number.POSITIVE_INFINITY;
+  db: Material[]
+): Material[] {
+  const reqRank = constraints.corrosionRequired
+    ? corrosionRank[constraints.corrosionRequired]
+    : 0;
 
-  if (material.max_service_temp_c < requiredTemp) {
-    return false;
+  let filtered = db.filter((m) => {
+    if (
+      constraints.maxTemperature_c !== undefined &&
+      m.max_service_temp_c < constraints.maxTemperature_c
+    ) {
+      return false;
+    }
+    if (
+      constraints.minTensileStrength_mpa !== undefined &&
+      m.tensile_strength_mpa < constraints.minTensileStrength_mpa
+    ) {
+      return false;
+    }
+    if (
+      constraints.maxDensity_g_cm3 !== undefined &&
+      m.density_g_cm3 > constraints.maxDensity_g_cm3
+    ) {
+      return false;
+    }
+    if (
+      constraints.maxCost_usd_kg !== undefined &&
+      m.cost_usd_kg > constraints.maxCost_usd_kg
+    ) {
+      return false;
+    }
+    if (reqRank > 0 && corrosionRank[m.corrosion_resistance] < reqRank) {
+      return false;
+    }
+    if (
+      constraints.needsFDMPrintability &&
+      (m.printability_fdm === "n/a" || m.printability_fdm === "poor")
+    ) {
+      return false;
+    }
+    if (
+      constraints.electricallyConductive &&
+      m.electrical_resistivity_ohm_m > 1e-4
+    ) {
+      return false;
+    }
+    if (
+      constraints.thermallyConductive &&
+      m.thermal_conductivity_w_mk < 10
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  if (filtered.length < 3) {
+    filtered = db.filter(
+      (m) =>
+        !constraints.needsFDMPrintability ||
+        (m.printability_fdm !== "n/a" && m.printability_fdm !== "poor")
+    );
   }
 
-  if (material.tensile_strength_mpa < requiredStrength) {
-    return false;
+  if (filtered.length === 0) {
+    filtered = [...db];
   }
 
-  if (material.density_g_cm3 > maxDensity) {
-    return false;
-  }
-
-  if (material.cost_usd_kg > maxCost) {
-    return false;
-  }
-
-  if (
-    constraints.corrosionRequired &&
-    CORROSION_RANKS[material.corrosion_resistance] < CORROSION_RANKS[constraints.corrosionRequired]
-  ) {
-    return false;
-  }
-
-  if (
-    constraints.needsFDMPrintability &&
-    (material.printability_fdm === "n/a" || material.printability_fdm === "poor")
-  ) {
-    return false;
-  }
-
-  if (constraints.electricallyConductive && material.electrical_resistivity_ohm_m > 1e-4) {
-    return false;
-  }
-
-  if (
-    constraints.thermallyConductive &&
-    material.thermal_conductivity_w_mk < THERMALLY_CONDUCTIVE_THRESHOLD_W_MK
-  ) {
-    return false;
-  }
-
-  return true;
+  return filtered;
 }
 
-function buildMatchReason(
-  material: Material,
-  weightedFactors: Record<keyof UserConstraints["priorityWeights"], number>
-): string {
-  const factorLabels: Record<keyof UserConstraints["priorityWeights"], string> = {
-    strength: "high tensile capability",
-    thermal: "strong high-temperature survivability",
-    weight: "low density",
-    cost: "cost efficiency",
-    corrosion: "corrosion resistance"
-  };
-
-  const topFactors = Object.entries(weightedFactors)
-    .sort(([, first], [, second]) => second - first)
-    .slice(0, 2)
-    .map(([key]) => factorLabels[key as keyof UserConstraints["priorityWeights"]]);
-
-  const [firstFactor, secondFactor] = topFactors;
-
-  if (firstFactor && secondFactor) {
-    return `${material.name} rises because it combines ${firstFactor} with ${secondFactor} in the surviving candidate set.`;
-  }
-
-  if (firstFactor) {
-    return `${material.name} remains competitive primarily because of its ${firstFactor}.`;
-  }
-
-  return `${material.name} clears the filters with a balanced overall profile.`;
-}
-
-function scoreFilteredMaterials(
-  materials: Material[],
-  constraints: UserConstraints
+export function scoreMaterials(
+  constraints: UserConstraints,
+  db: Material[]
 ): RankedMaterial[] {
-  const weights = normalisePriorityWeights(constraints.priorityWeights);
-  const maxTensile = Math.max(...materials.map((material) => material.tensile_strength_mpa), 1);
-  const maxServiceTemp = Math.max(...materials.map((material) => material.max_service_temp_c), 1);
-  const maxDensity = Math.max(...materials.map((material) => material.density_g_cm3), 1);
-  const maxCost = Math.max(...materials.map((material) => material.cost_usd_kg), 1);
-
-  return materials
-    .map<RankedMaterial>((material) => {
-      const strengthScore = safeDivide(material.tensile_strength_mpa, maxTensile);
-      const thermalScore = safeDivide(material.max_service_temp_c, maxServiceTemp);
-      const weightScore = Math.max(0, 1 - safeDivide(material.density_g_cm3, maxDensity));
-      const costScore = Math.max(0, 1 - safeDivide(material.cost_usd_kg, maxCost));
-      const corrosionScore = CORROSION_RANKS[material.corrosion_resistance] / 4;
-
-      const weightedFactors = {
-        strength: weights.strength * strengthScore,
-        thermal: weights.thermal * thermalScore,
-        weight: weights.weight * weightScore,
-        cost: weights.cost * costScore,
-        corrosion: weights.corrosion * corrosionScore
-      };
-
-      const score =
-        100 *
-        (weightedFactors.strength +
-          weightedFactors.thermal +
-          weightedFactors.weight +
-          weightedFactors.cost +
-          weightedFactors.corrosion);
-
-      return {
-        ...material,
-        score: Number(score.toFixed(2)),
-        matchReason: buildMatchReason(material, weightedFactors)
-      };
-    })
-    .sort((first, second) => second.score - first.score);
-}
-
-export function scoreMaterials(constraints: UserConstraints, db: Material[]): RankedMaterial[] {
-  const normalizedConstraints = {
+  const normalisedConstraints = {
     ...constraints,
     priorityWeights: normalisePriorityWeights(constraints.priorityWeights)
   };
+  const filtered = filterMaterialsForConstraints(normalisedConstraints, db);
+  const maxT = Math.max(...filtered.map((m) => m.max_service_temp_c));
+  const maxStr = Math.max(...filtered.map((m) => m.tensile_strength_mpa));
+  const maxRho = Math.max(...filtered.map((m) => m.density_g_cm3));
+  const maxC = Math.max(...filtered.map((m) => m.cost_usd_kg));
+  const w = normalisedConstraints.priorityWeights;
 
-  const firstPass = db.filter((material) => passesHardFilters(material, normalizedConstraints));
+  return filtered
+    .map((m) => {
+      const thermal = maxT > 0 ? m.max_service_temp_c / maxT : 0;
+      const strength = maxStr > 0 ? m.tensile_strength_mpa / maxStr : 0;
+      const lightness = maxRho > 0 ? 1 - m.density_g_cm3 / maxRho : 0;
+      const costEff = maxC > 0 ? 1 - m.cost_usd_kg / maxC : 0;
+      const corrosion = corrosionRank[m.corrosion_resistance] / 4;
 
-  if (firstPass.length >= 3 || normalizedConstraints.maxCost_usd_kg === undefined) {
-    return scoreFilteredMaterials(firstPass, normalizedConstraints).slice(0, 10);
-  }
+      const score = Math.round(
+        100 *
+          (w.thermal * thermal +
+            w.strength * strength +
+            w.weight * lightness +
+            w.cost * costEff +
+            w.corrosion * corrosion)
+      );
 
-  const relaxedCostPass = db.filter((material) =>
-    passesHardFilters(material, normalizedConstraints, 2)
-  );
-
-  return scoreFilteredMaterials(relaxedCostPass, normalizedConstraints).slice(0, 10);
+      return { ...m, score, matchReason: buildReason(m, w) };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
 }

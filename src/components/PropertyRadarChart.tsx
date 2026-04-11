@@ -1,8 +1,16 @@
 "use client";
 
-import { ResponsiveContainer, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart } from "recharts";
+import {
+  Legend,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer
+} from "recharts";
 
-import { materialsDB } from "@/lib/materials-db";
+import materialsDB from "@/lib/materials-db";
 import { CORROSION_RANKS, QUALITY_RANKS } from "@/lib/scoring";
 import { RankedMaterial } from "@/types";
 
@@ -10,105 +18,115 @@ interface PropertyRadarChartProps {
   materials: RankedMaterial[];
 }
 
-const SERIES = [
-  { stroke: "#f59e0b", fill: "rgba(245, 158, 11, 0.22)" },
-  { stroke: "#38bdf8", fill: "rgba(56, 189, 248, 0.18)" },
-  { stroke: "#34d399", fill: "rgba(52, 211, 153, 0.18)" }
+const series = [
+  { stroke: "#F59E0B", fill: "rgba(245,158,11,0.15)" },
+  { stroke: "#38BDF8", fill: "rgba(56,189,248,0.10)" },
+  { stroke: "#34D399", fill: "rgba(52,211,153,0.10)" }
 ];
 
-function normalise(value: number, maxValue: number): number {
+function normalise(value: number, maxValue: number) {
   if (maxValue <= 0) {
     return 0;
   }
-
   return Number(((value / maxValue) * 100).toFixed(1));
 }
 
-export default function PropertyRadarChart({ materials }: PropertyRadarChartProps): JSX.Element | null {
-  const topMaterials = materials.slice(0, 3);
+export default function PropertyRadarChart({
+  materials
+}: PropertyRadarChartProps) {
+  const topThree = materials.slice(0, 3);
 
-  if (topMaterials.length === 0) {
+  if (topThree.length === 0) {
     return null;
   }
 
-  const maxTensile = Math.max(...materialsDB.map((material) => material.tensile_strength_mpa));
-  const maxServiceTemp = Math.max(...materialsDB.map((material) => material.max_service_temp_c));
-  const maxDensity = Math.max(...materialsDB.map((material) => material.density_g_cm3));
-  const maxCost = Math.max(...materialsDB.map((material) => material.cost_usd_kg));
+  const maxStrength = Math.max(...materialsDB.map((item) => item.tensile_strength_mpa));
+  const maxThermal = Math.max(...materialsDB.map((item) => item.max_service_temp_c));
+  const maxDensity = Math.max(...materialsDB.map((item) => item.density_g_cm3));
+  const maxCost = Math.max(...materialsDB.map((item) => item.cost_usd_kg));
 
-  const axes = [
+  const chartData = [
     {
-      key: "Strength",
-      value: (material: RankedMaterial) => normalise(material.tensile_strength_mpa, maxTensile)
+      axis: "Strength",
+      ...Object.fromEntries(
+        topThree.map((item) => [item.name, normalise(item.tensile_strength_mpa, maxStrength)])
+      )
     },
     {
-      key: "Thermal",
-      value: (material: RankedMaterial) => normalise(material.max_service_temp_c, maxServiceTemp)
+      axis: "Thermal",
+      ...Object.fromEntries(
+        topThree.map((item) => [item.name, normalise(item.max_service_temp_c, maxThermal)])
+      )
     },
     {
-      key: "Lightness",
-      value: (material: RankedMaterial) => normalise(maxDensity - material.density_g_cm3, maxDensity)
+      axis: "Lightness",
+      ...Object.fromEntries(
+        topThree.map((item) => [
+          item.name,
+          normalise(maxDensity - item.density_g_cm3, maxDensity)
+        ])
+      )
     },
     {
-      key: "Cost Efficiency",
-      value: (material: RankedMaterial) => normalise(maxCost - material.cost_usd_kg, maxCost)
+      axis: "Cost Efficiency",
+      ...Object.fromEntries(
+        topThree.map((item) => [item.name, normalise(maxCost - item.cost_usd_kg, maxCost)])
+      )
     },
     {
-      key: "Corrosion",
-      value: (material: RankedMaterial) => CORROSION_RANKS[material.corrosion_resistance] * 25
+      axis: "Corrosion",
+      ...Object.fromEntries(
+        topThree.map((item) => [item.name, CORROSION_RANKS[item.corrosion_resistance] * 25])
+      )
     },
     {
-      key: "Printability",
-      value: (material: RankedMaterial) => QUALITY_RANKS[material.printability_fdm] * 25
+      axis: "Printability",
+      ...Object.fromEntries(
+        topThree.map((item) => [item.name, QUALITY_RANKS[item.printability_fdm] * 25])
+      )
     }
   ];
 
-  const data = axes.map((axis) => {
-    return topMaterials.reduce<Record<string, number | string>>(
-      (entry, material) => {
-        entry[material.name] = axis.value(material);
-        return entry;
-      },
-      { subject: axis.key }
-    );
-  });
-
   return (
-    <section className="rounded-xl border border-zinc-700 bg-zinc-900 p-4">
+    <section className="rounded-xl border border-surface-800 bg-surface-900 p-4">
       <div className="mb-4">
-        <p className="text-xs uppercase tracking-wide text-zinc-500">Property Radar</p>
-        <h3 className="mt-2 text-lg font-medium text-zinc-100">Top 3 comparison across core decision axes</h3>
+        <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-surface-600">
+          Multiaxis Comparison
+        </div>
+        <h3 className="mt-1 text-[20px] font-semibold text-zinc-100">
+          Top 3 property profile
+        </h3>
       </div>
-      <div className="h-[340px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={data} outerRadius="72%">
-            <PolarGrid stroke="#52525b" strokeDasharray="3 3" />
-            <PolarAngleAxis dataKey="subject" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-            <PolarRadiusAxis tick={false} axisLine={false} domain={[0, 100]} />
-            {topMaterials.map((material, index) => (
-              <Radar
-                key={material.id}
-                dataKey={material.name}
-                stroke={SERIES[index]?.stroke ?? SERIES[0].stroke}
-                fill={SERIES[index]?.fill ?? SERIES[0].fill}
-                fillOpacity={1}
-                strokeWidth={2}
-              />
-            ))}
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-300">
-        {topMaterials.map((material, index) => (
-          <div key={material.id} className="inline-flex items-center gap-2 rounded-full border border-zinc-700 px-3 py-1">
-            <span
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: SERIES[index]?.stroke ?? SERIES[0].stroke }}
+      <ResponsiveContainer width="100%" height={260}>
+        <RadarChart data={chartData}>
+          <PolarGrid stroke="#27272A" />
+          <PolarAngleAxis
+            dataKey="axis"
+            tick={{ fill: "#71717A", fontSize: 11 }}
+          />
+          <PolarRadiusAxis
+            angle={90}
+            domain={[0, 100]}
+            tick={{ fill: "#3F3F46", fontSize: 9 }}
+          />
+          {topThree.map((item, index) => (
+            <Radar
+              key={item.id}
+              name={item.name}
+              dataKey={item.name}
+              stroke={series[index].stroke}
+              fill={series[index].fill}
+              fillOpacity={1}
+              strokeWidth={1.5}
             />
-            {material.name}
-          </div>
-        ))}
-      </div>
+          ))}
+          <Legend
+            verticalAlign="bottom"
+            iconType="circle"
+            wrapperStyle={{ color: "#A1A1AA", fontSize: "11px", paddingTop: "12px" }}
+          />
+        </RadarChart>
+      </ResponsiveContainer>
     </section>
   );
 }

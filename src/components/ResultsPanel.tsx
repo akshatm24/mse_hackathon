@@ -1,187 +1,188 @@
 "use client";
 
-import { Bot, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { LayoutGrid, Rows3 } from "lucide-react";
+import { useEffect, useState } from "react";
 
+import ChatInterface from "@/components/ChatInterface";
 import ComparisonTable from "@/components/ComparisonTable";
 import MaterialCard from "@/components/MaterialCard";
 import PropertyRadarChart from "@/components/PropertyRadarChart";
-import { cn } from "@/lib/utils";
 import { RecommendResponse } from "@/types";
 
 interface ResultsPanelProps {
-  results: RecommendResponse;
-  selectedIds: string[];
-  llmEnabled: boolean;
-  onToggleSelect: (id: string) => void;
-}
-
-function activeConstraintChips(results: RecommendResponse): string[] {
-  const { inferredConstraints } = results;
-  const chips: string[] = [];
-
-  if (inferredConstraints.maxTemperature_c !== undefined) {
-    chips.push(`Temp >= ${inferredConstraints.maxTemperature_c}°C`);
-  }
-
-  if (inferredConstraints.minTensileStrength_mpa !== undefined) {
-    chips.push(`Tensile >= ${inferredConstraints.minTensileStrength_mpa} MPa`);
-  }
-
-  if (inferredConstraints.maxDensity_g_cm3 !== undefined) {
-    chips.push(`Density <= ${inferredConstraints.maxDensity_g_cm3} g/cm³`);
-  }
-
-  if (inferredConstraints.maxCost_usd_kg !== undefined) {
-    chips.push(`Cost <= $${inferredConstraints.maxCost_usd_kg}/kg`);
-  }
-
-  if (inferredConstraints.corrosionRequired) {
-    chips.push(`Corrosion >= ${inferredConstraints.corrosionRequired}`);
-  }
-
-  if (inferredConstraints.needsFDMPrintability) {
-    chips.push("FDM printable");
-  }
-
-  if (inferredConstraints.electricallyConductive) {
-    chips.push("Electrically conductive");
-  }
-
-  if (inferredConstraints.thermallyConductive) {
-    chips.push("Thermally conductive");
-  }
-
-  return chips;
+  data: RecommendResponse;
+  query?: string;
+  searchDurationMs?: number;
 }
 
 export default function ResultsPanel({
-  results,
-  selectedIds,
-  llmEnabled,
-  onToggleSelect
-}: ResultsPanelProps): JSX.Element {
+  data,
+  query,
+  searchDurationMs
+}: ResultsPanelProps) {
   const [showAll, setShowAll] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(results.rankedMaterials[0]?.id ?? null);
-  const [visible, setVisible] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [view, setView] = useState<"grid" | "table">("grid");
 
   useEffect(() => {
     setShowAll(false);
-    setExpandedId(results.rankedMaterials[0]?.id ?? null);
-    setVisible(false);
+    setSelectedIds([]);
+  }, [data]);
 
-    const frame = window.requestAnimationFrame(() => setVisible(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, [results]);
+  const visibleMaterials = showAll ? data.rankedMaterials : data.rankedMaterials.slice(0, 5);
+  const selectedMaterials = data.rankedMaterials.filter((item) => selectedIds.includes(item.id));
+  const countLabel = data.matchCount ?? data.rankedMaterials.length;
 
-  const constraintChips = useMemo(() => activeConstraintChips(results), [results]);
-  const visibleMaterials = showAll ? results.rankedMaterials : results.rankedMaterials.slice(0, 5);
-  const selectedMaterials = results.rankedMaterials.filter((material) => selectedIds.includes(material.id));
-
-  if (results.rankedMaterials.length === 0) {
-    return (
-      <section
-        className={cn(
-          "space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900 p-6 transition-all duration-500 ease-out",
-          visible ? "fade-slide-in" : "fade-slide-ready"
-        )}
-      >
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-          <h2 className="text-lg font-medium text-zinc-100">No materials cleared the active hard filters</h2>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-300">{results.clarifications}</p>
-        </div>
-      </section>
-    );
+  function toggleMaterial(id: string) {
+    setSelectedIds((current) => {
+      if (current.includes(id)) {
+        return current.filter((entry) => entry !== id);
+      }
+      if (current.length >= 4) {
+        return current;
+      }
+      return [...current, id];
+    });
   }
 
   return (
-    <section
-      className={cn(
-        "space-y-6 transition-all duration-500 ease-out",
-        visible ? "fade-slide-in" : "fade-slide-ready"
-      )}
-    >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <section className="fade-slide-up space-y-6">
+      <div className="mx-auto max-w-[780px] rounded-r-xl border border-surface-800 border-l-brand bg-surface-900 px-4 py-4">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-brand"
+              style={{ animation: "pulse 2s ease-in-out infinite" }}
+            />
+            <span className="text-[10px] font-semibold tracking-[0.08em] text-brand">
+              GEMINI ANALYSIS
+            </span>
+          </div>
+          <span className="rounded bg-surface-800 px-2 py-0.5 font-mono text-[9px] text-surface-600">
+            gemini-2.0-flash
+          </span>
+        </div>
+        <div className="prose-copy text-[13px] leading-[1.75] text-surface-400">
+          {data.llmExplanation.split(/\n\s*\n/).map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </div>
+      </div>
+
+      <div className="mx-auto flex max-w-[1200px] items-end justify-between gap-4 px-4">
         <div>
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Recommendation Results</p>
-          <h2 className="mt-2 text-2xl font-semibold text-zinc-100">
-            Top-ranked materials for the current engineering envelope
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">{results.clarifications}</p>
+          <div className="text-[10px] uppercase tracking-[0.12em] text-surface-600">
+            Top Matches
+          </div>
+          <div className="mt-1 text-[12px] text-zinc-500">
+            {countLabel} materials passed filters
+            {searchDurationMs ? ` · Found in ${(searchDurationMs / 1000).toFixed(1)}s` : ""}
+          </div>
         </div>
-        {constraintChips.length > 0 ? (
-          <div className="flex flex-wrap gap-2 lg:max-w-xl lg:justify-end">
-            {constraintChips.map((chip) => (
-              <span key={chip} className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-300">
-                {chip}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="rounded-xl border border-zinc-700 bg-zinc-800/80 p-4">
-        <div className="flex items-start gap-3">
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-400">
-            <Bot className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                {llmEnabled ? "LLM Explanation" : "Scoring Explanation"}
-              </p>
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300">
-                <Sparkles className="h-3 w-3" />
-                {llmEnabled ? "AI-assisted summary" : "Rules-only summary"}
-              </span>
-            </div>
-            <div className="prose-copy mt-3 border-l-4 border-amber-500 pl-4 text-sm leading-relaxed text-zinc-200">
-              {results.llmExplanation.split(/\n\s*\n/).map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setView("grid")}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${
+              view === "grid"
+                ? "border-surface-700 bg-surface-800 text-zinc-100"
+                : "border-surface-800 text-surface-600"
+            }`}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("table")}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${
+              view === "table"
+                ? "border-surface-700 bg-surface-800 text-zinc-100"
+                : "border-surface-800 text-surface-600"
+            }`}
+          >
+            <Rows3 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
-      <PropertyRadarChart materials={results.rankedMaterials.slice(0, 3)} />
+      <div className="mx-auto max-w-[1200px] px-4">
+        <PropertyRadarChart materials={data.rankedMaterials.slice(0, 3)} />
+      </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Ranked Materials</p>
-            <p className="mt-1 text-sm text-zinc-400">
-              Select up to four materials to compare them side by side.
-            </p>
-          </div>
-          {results.rankedMaterials.length > 5 ? (
-            <button
-              type="button"
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
-              onClick={() => setShowAll((current) => (current ? false : true))}
-            >
-              {showAll ? "Show top 5" : "Show all 10"}
-            </button>
-          ) : null}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {view === "grid" ? (
+        <div className="mx-auto grid max-w-[1200px] grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 px-4">
           {visibleMaterials.map((material, index) => (
             <MaterialCard
               key={material.id}
               material={material}
               rank={index + 1}
-              isExpanded={expandedId === material.id}
-              isSelected={selectedIds.includes(material.id)}
-              disableCompare={selectedIds.length >= 4}
-              onToggle={() => setExpandedId((current) => (current === material.id ? null : material.id))}
-              onCompareToggle={() => onToggleSelect(material.id)}
+              selected={selectedIds.includes(material.id)}
+              compareDisabled={selectedIds.length >= 4}
+              onToggle={() => toggleMaterial(material.id)}
+              staggerIndex={index}
             />
           ))}
         </div>
-      </div>
+      ) : (
+        <div className="mx-auto max-w-[1200px] overflow-x-auto rounded-xl border border-surface-800 bg-surface-900 px-4">
+          <table className="min-w-full">
+            <thead className="border-b border-surface-800 text-left text-[10px] uppercase tracking-[0.08em] text-surface-600">
+              <tr>
+                <th className="py-3">Material</th>
+                <th className="py-3">Category</th>
+                <th className="py-3">Score</th>
+                <th className="py-3">Max Temp</th>
+                <th className="py-3">Density</th>
+                <th className="py-3">Cost</th>
+                <th className="py-3">Compare</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleMaterials.map((material) => (
+                <tr key={material.id} className="border-b border-surface-800/60 text-[12px]">
+                  <td className="py-3 font-medium text-zinc-100">{material.name}</td>
+                  <td className="py-3 text-surface-400">{material.category}</td>
+                  <td className="py-3 font-mono text-brand">{material.score}</td>
+                  <td className="py-3 font-mono text-surface-400">{material.max_service_temp_c}°C</td>
+                  <td className="py-3 font-mono text-surface-400">{material.density_g_cm3.toFixed(2)}</td>
+                  <td className="py-3 font-mono text-surface-400">${material.cost_usd_kg.toFixed(2)}</td>
+                  <td className="py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(material.id)}
+                      onChange={() => toggleMaterial(material.id)}
+                      className="h-4 w-4 accent-amber-500"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <ComparisonTable selectedMaterials={selectedMaterials} />
+      {data.rankedMaterials.length > 5 ? (
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => setShowAll((current) => !current)}
+            className="rounded-full border border-surface-800 px-4 py-2 text-[12px] text-surface-400 transition hover:text-zinc-100"
+          >
+            {showAll ? "Show fewer ↑" : `Show all ${data.rankedMaterials.length} results ↓`}
+          </button>
+        </div>
+      ) : null}
+
+      {selectedMaterials.length >= 2 ? (
+        <div className="mx-auto max-w-[1200px] px-4">
+          <ComparisonTable materials={selectedMaterials} />
+        </div>
+      ) : null}
+
+      <ChatInterface
+        initialQuery={query ?? data.inferredConstraints.rawQuery}
+        initialResults={data.rankedMaterials}
+      />
     </section>
   );
 }

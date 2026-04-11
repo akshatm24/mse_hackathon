@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true
+  reactStrictMode: true,
+  experimental: {
+    serverComponentsExternalPackages: ["@google/generative-ai"]
+  }
 };
 
 module.exports = nextConfig;

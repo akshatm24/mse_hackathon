@@ -1,8 +1,10 @@
-.next
-node_modules
-out
-dist
-coverage
+.next/
+node_modules/
+out/
+dist/
+coverage/
 *.log
 .DS_Store
 .env.local
+.env*.local
+.vercel

@@ -1,24 +1,20 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Smart Alloy Selector – MET-QUEST'26",
-  description:
-    "AI-assisted engineering material selection with deterministic scoring, charts, chat follow-ups, and a searchable 40+ material database.",
+  description: "AI-powered material recommendation tool for engineers",
   icons: {
     icon: "/favicon.svg"
   }
 };
 
-export default function RootLayout({
-  children
-}: Readonly<{
-  children: React.ReactNode;
-}>): JSX.Element {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body>{children}</body>
+    <html lang="en">
+      <body className="min-h-screen bg-surface-950 text-surface-200">{children}</body>
     </html>
   );
 }

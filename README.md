@@ -2,142 +2,132 @@
 
 ## What it does
 
-Smart Alloy Selector – MET-QUEST'26 is a production-ready Next.js web application for engineering material selection. It combines a curated embedded materials database with a deterministic scoring engine and optional Google Gemini assistance to:
-
-- extract engineering constraints from natural-language problem statements,
-- rank candidate materials across metals, polymers, ceramics, composites, and solders,
-- explain trade-offs in plain technical language,
-- compare shortlisted materials with radar charts and side-by-side tables, and
-- continue the analysis through a follow-up chat workflow.
-
-If `GEMINI_API_KEY` is not configured, the app still works in offline mode using manual filters and the local scoring engine.
+Smart Alloy Selector is an AI-assisted engineering material recommendation tool built for MET-QUEST'26. A user describes a mechanical, thermal, electrical, corrosion, or manufacturing problem in plain English, the system extracts constraints, filters a curated 42-material database, and ranks the best candidates with a deterministic weighted scoring engine. The app also supports follow-up questions, side-by-side comparison, and a searchable database explorer.
 
 ## Tech stack
 
-- Next.js 14 with App Router
-- React 18 + TypeScript (strict mode)
-- Tailwind CSS v3
-- Recharts for radar visualization
-- Google Gemini via `@google/generative-ai`
-- Vercel-ready serverless API route architecture
+- Next.js 14 App Router
+- TypeScript
+- Tailwind CSS
+- Recharts
+- Google Gemini (`@google/generative-ai`)
+- Lucide React icons
 
-## Local setup (step-by-step including API key)
+## Local setup
 
-1. Clone or copy this project into your workspace.
-2. In the project root, create a file named `.env.local`.
-3. Add this line:
-
-```env
-GEMINI_API_KEY=your_key_here
-```
-
-4. Get a free Gemini Developer API key from [Google AI Studio](https://aistudio.google.com/apikey).
-5. Install dependencies:
+1. Clone the repository and open the project folder.
+2. Install dependencies:
 
 ```bash
 npm install
 ```
 
-6. Start the development server:
+3. Create a local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+4. Add your Gemini API key:
+
+```bash
+GEMINI_API_KEY=your_real_gemini_api_key
+```
+
+5. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-7. Open [http://localhost:3000](http://localhost:3000).
+6. Open [http://localhost:3000](http://localhost:3000).
 
 Notes:
-- The app always reads the key from `process.env.GEMINI_API_KEY`.
-- If the key is missing, the API route returns:
+- `.env.local` is ignored by git and should never be committed.
+- If the Gemini key is missing, the UI still works using local heuristic extraction and deterministic ranking.
 
-```json
-{ "error": "GEMINI_API_KEY not configured. See README for setup." }
+## Vercel deployment
+
+1. Push the repository to GitHub.
+2. Import the repo into Vercel.
+3. Add the environment variable `GEMINI_API_KEY` in the Vercel project settings.
+4. Redeploy the project.
+5. Confirm the homepage and `POST /api/recommend` return successful responses.
+
+CLI workflow:
+
+```bash
+vercel --yes --env GEMINI_API_KEY=your_real_key --build-env GEMINI_API_KEY=your_real_key --prod
 ```
 
-- With no key present, you can still use the app by entering constraints manually in the Advanced Filters panel.
+## Why not GitHub Pages
 
-## Vercel deployment (step-by-step including where to paste the key)
+GitHub Pages is designed for static hosting. This project needs a server-side API route for Gemini calls, runtime environment variables, and server execution during recommendation requests. Vercel supports the required Next.js App Router server features out of the box.
 
-1. Push the project to a GitHub repository.
-2. Go to [vercel.com/new](https://vercel.com/new).
-3. Import the GitHub repository.
-4. Before clicking **Deploy**, open **Environment Variables**.
-5. Add the following variable:
+## Materials database
 
-- Name: `GEMINI_API_KEY`
-- Value: your Gemini API key
+- 42 curated materials
+- 5 categories: Metal, Polymer, Ceramic, Composite, Solder
+- 18 core properties per material
+- Sources include ASM Handbook, MatWeb, NASA TPSX, supplier datasheets, and manufacturer technical references
 
-6. Click **Deploy**.
-7. Vercel will detect Next.js automatically. No additional manual configuration is required.
-
-## Why not GitHub Pages?
-
-GitHub Pages is static-only. This app needs server-side route handlers under `src/app/api/recommend/route.ts` to call Gemini securely using `process.env.GEMINI_API_KEY`. Because of that, GitHub Pages is not suitable for this project.
-
-Vercel is the correct target because it supports Next.js App Router, serverless API routes, and environment variables out of the box. It is also free for a project of this scale.
-
-## Materials database sources
-
-The embedded database contains 42 engineering materials across five categories:
-
-- Metals and alloys
-- Polymers
-- Ceramics
-- Composites
-- Solders and brazing alloys
-
-Property values were compiled from typical literature and engineering reference data, primarily:
-
-- MatWeb material datasheets
-- ASM Handbook reference values
-- Supplier technical datasheets for specialty composites and solders
-- Typical OEM polymer processing/property data
-
-The app stores values for density, strength, stiffness, hardness, conductivity, heat capacity, service temperature, thermal expansion, resistivity, corrosion resistance, machinability, printability, and approximate material cost.
+The embedded dataset includes:
+- Structural metals such as stainless steels, titanium alloys, aluminum alloys, nickel alloys, and tool steels
+- Printable and high-performance polymers such as PLA, ABS, PETG, PA12, PEEK, Ultem, PTFE, and Delrin
+- Ceramics including alumina, zirconia, silicon carbide, silicon nitride, and boron nitride
+- Composites including CFRP, GFRP, Kevlar/epoxy, and carbon-carbon
+- Electronics joining materials including eutectic tin-lead, SAC305, AuSn20, and silver braze
 
 ## Scoring methodology
 
-The ranking engine is deterministic and reproducible.
+The ranking has two stages:
 
-1. Hard filters remove materials that violate active requirements.
-   - minimum service temperature
-   - minimum tensile strength
-   - maximum density
-   - maximum cost
-   - corrosion requirement
+1. Hard filters
+   - Minimum service temperature
+   - Minimum tensile strength
+   - Maximum density
+   - Maximum cost
+   - Minimum corrosion requirement
+   - Electrical conductivity requirement
    - FDM printability requirement
-   - electrical conductivity requirement
-   - optional thermal conductivity preference used by the UI filter set
 
-2. Survivors are normalized across the filtered set.
-   - strength score
-   - thermal score
-   - weight score
-   - cost score
-   - corrosion score
+2. Weighted sum scoring
 
-3. The final score is a weighted sum scaled to 100.
+For each surviving material:
 
-4. The engine generates a short match reason highlighting the strongest contributing factors.
+```text
+score = 100 * (
+  w_thermal   * normalized_thermal +
+  w_strength  * normalized_strength +
+  w_weight    * normalized_lightness +
+  w_cost      * normalized_cost_efficiency +
+  w_corrosion * normalized_corrosion
+)
+```
 
-5. If fewer than three materials survive and a cost limit was active, the engine retries once with the cost ceiling doubled.
+Where:
+- `normalized_thermal = material.max_service_temp / max(max_service_temp)`
+- `normalized_strength = material.tensile_strength / max(tensile_strength)`
+- `normalized_lightness = 1 - material.density / max(density)`
+- `normalized_cost_efficiency = 1 - material.cost / max(cost)`
+- `normalized_corrosion = corrosion_rank / 4`
 
-Gemini is used only for:
-- extracting structured constraints from user language, and
-- generating the engineering explanation and follow-up responses.
+The engine returns the top 10 materials after sorting by descending score.
 
-The material ranking itself remains deterministic.
+## Graceful degradation
+
+If Gemini is unavailable or `GEMINI_API_KEY` is not configured:
+
+- the app falls back to local keyword-based constraint inference
+- deterministic scoring still works against the embedded database
+- the UI remains fully usable for search, comparison, and database exploration
+
+This keeps the tool functional during demos, local development, or API outages.
 
 ## Limitations and future work
 
-- The database is curated rather than exhaustive, so niche grades and supplier-specific variants are not all included.
-- Values are typical engineering values, not certification-grade design allowables.
-- The current scoring model does not explicitly include fatigue, creep, fracture toughness, availability, joining compatibility, or sustainability metrics.
-- Follow-up chat reuses ranked results and prompt history, but it is not a full agentic simulation or finite-element workflow.
-- More advanced future versions could add:
-  - fatigue and creep models,
-  - process-specific manufacturability scores,
-  - downloadable reports,
-  - CSV import/export,
-  - authenticated project saving,
-  - larger reference datasets with citation links per property.
+- The current dataset is curated rather than exhaustive
+- The scoring model does not yet include fatigue life, creep, fracture toughness, or joining compatibility
+- Numeric properties are literature-typical values and should be validated for a specific grade, temper, supplier, or processing route
+- The chatbot currently answers from ranked results rather than a full retrieval pipeline over raw datasheets
+- Future work could add Ashby plots, composition-based property prediction, exportable reports, and deeper manufacturing process recommendations
