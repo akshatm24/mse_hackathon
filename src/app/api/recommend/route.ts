@@ -60,15 +60,59 @@ function fallbackExplanation(query: string, rankedMaterials: ReturnType<typeof s
   );
 }
 
-export async function POST(req: NextRequest) {
+async function buildRecommendationResponse({
+  query,
+  history,
+  manualConstraints
+}: {
+  query: string;
+  history?: { role: string; parts: string }[];
+  manualConstraints?: Partial<UserConstraints>;
+}) {
+  const constraints = await extractConstraints(query);
+  const mergedConstraints = mergeConstraints(
+    constraints,
+    manualConstraints ? { ...manualConstraints, rawQuery: query } : undefined
+  );
+  const allMatches = filterMaterialsForConstraints(mergedConstraints, materialsDB);
+  const rankedMaterials = scoreMaterials(mergedConstraints, materialsDB);
+  let llmExplanation = "";
+
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY not configured. See README." },
-        { status: 503 }
-      );
+    llmExplanation = await generateExplanation(query, rankedMaterials, history);
+  } catch {
+    llmExplanation = fallbackExplanation(query, rankedMaterials);
+  }
+
+  return {
+    rankedMaterials,
+    llmExplanation,
+    inferredConstraints: mergedConstraints,
+    clarifications: process.env.GEMINI_API_KEY
+      ? "Constraints inferred from your description."
+      : "Gemini key not configured, so local heuristics were used to infer constraints.",
+    matchCount: allMatches.length
+  };
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const query = req.nextUrl.searchParams.get("query");
+
+    if (!query) {
+      return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
 
+    const data = await buildRecommendationResponse({ query });
+    return NextResponse.json(data);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
     const body = (await req.json()) as {
       query: string;
       history?: { role: string; parts: string }[];
@@ -82,28 +126,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
 
-    const constraints = await extractConstraints(query);
-    const mergedConstraints = mergeConstraints(
-      constraints,
-      manualConstraints ? { ...manualConstraints, rawQuery: query } : undefined
-    );
-    const allMatches = filterMaterialsForConstraints(mergedConstraints, materialsDB);
-    const rankedMaterials = scoreMaterials(mergedConstraints, materialsDB);
-    let llmExplanation = "";
-
-    try {
-      llmExplanation = await generateExplanation(query, rankedMaterials, history);
-    } catch {
-      llmExplanation = fallbackExplanation(query, rankedMaterials);
-    }
-
-    return NextResponse.json({
-      rankedMaterials,
-      llmExplanation,
-      inferredConstraints: mergedConstraints,
-      clarifications: "Constraints inferred from your description.",
-      matchCount: allMatches.length
+    const data = await buildRecommendationResponse({
+      query,
+      history,
+      manualConstraints
     });
+
+    return NextResponse.json(data);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });
