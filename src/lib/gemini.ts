@@ -1,10 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-import { RankedMaterial, UserConstraints } from "@/types";
+import { NovelMaterialPrediction, RankedMaterial, UserConstraints } from "@/types";
 import { inferQueryIntent } from "@/lib/query-intent";
 import { normalisePriorityWeights } from "@/lib/weights";
 
 type Axis = "cost" | "thermal" | "weight" | "strength" | "corrosion";
+const ALLOWED_CATEGORIES = new Set(["Metal", "Polymer", "Ceramic", "Composite", "Solder"]);
 
 function getClient() {
   const key = process.env.GEMINI_API_KEY;
@@ -70,9 +71,58 @@ function repairPriorityWeights(
   return normalised;
 }
 
+function semanticTagsFromProfile(profile: ReturnType<typeof inferQueryIntent>) {
+  const tags = new Set<string>(profile.relevanceTerms);
+
+  if (profile.wantsFDM) tags.add("fdm");
+  if (profile.wantsElectricalConductivity) tags.add("conductive");
+  if (profile.wantsElectricalInsulation) tags.add("insulator");
+  if (profile.wantsThermalConductivity) tags.add("thermally-conductive");
+  if (profile.wantsMachinability) tags.add("machinable");
+  if (profile.wantsHardness) tags.add("wear-resistant");
+  if (profile.wantsBiocompatible) tags.add("biocompatible");
+  if (profile.wantsOutdoor) tags.add("outdoor");
+  if (profile.wantsMarine) tags.add("marine");
+  if (profile.wantsAcidResistance) tags.add("chemical");
+  if (profile.wantsElectronics) tags.add("electronics");
+  if (profile.wantsProbe) tags.add("probe");
+  if (profile.wantsStructural) tags.add("structural");
+
+  return [...tags];
+}
+
+function sanitisePreferredCategories(
+  categories: unknown
+): UserConstraints["preferredCategories"] | undefined {
+  if (!Array.isArray(categories)) {
+    return undefined;
+  }
+
+  const valid = categories.filter(
+    (entry): entry is NonNullable<UserConstraints["preferredCategories"]>[number] =>
+      typeof entry === "string" && ALLOWED_CATEGORIES.has(entry)
+  );
+
+  return valid.length > 0 ? valid : undefined;
+}
+
+function sanitiseSemanticTags(tags: unknown) {
+  if (!Array.isArray(tags)) {
+    return undefined;
+  }
+
+  const valid = tags.filter((entry): entry is string => typeof entry === "string").slice(0, 12);
+  return valid.length > 0 ? valid : undefined;
+}
+
 export function heuristicExtract(query: string): UserConstraints {
   const q = query.toLowerCase();
   const profile = inferQueryIntent(query);
+  const explicitCostLanguage =
+    /\bcheap(?:er|est)?\b|\bbudget\b|\baffordable\b|\binexpensive\b|\blowest[- ]cost\b|\bleast[- ]cost\b|\blowest[- ]price\b/i.test(
+      query
+    );
+  const simplePartLanguage = /\bsimple\b|\bbasic\b|\bgeneral\b|\bno special\b/i.test(query);
 
   const hits = profile.axisHits;
 
@@ -130,6 +180,30 @@ export function heuristicExtract(query: string): UserConstraints {
       (paired as Record<string, number>)[key] = each;
     });
     weights = paired;
+  }
+
+  if (
+    explicitCostLanguage &&
+    (topAxis === "cost" || secondAxis === "cost") &&
+    (topAxis === "strength" || secondAxis === "strength")
+  ) {
+    weights = {
+      thermal: 0.05,
+      strength: 0.2,
+      weight: 0.05,
+      cost: 0.6,
+      corrosion: 0.1
+    };
+  }
+
+  if (explicitCostLanguage && simplePartLanguage) {
+    weights = {
+      thermal: 0.05,
+      strength: 0.1,
+      weight: 0.05,
+      cost: 0.75,
+      corrosion: 0.05
+    };
   }
 
   if (topAxis === "cost" && topCount >= 1 && secondCount === 0) {
@@ -205,7 +279,21 @@ export function heuristicExtract(query: string): UserConstraints {
           weight: 0.2,
           cost: 0.25,
           corrosion: 0.05
-        };
+      };
+  }
+
+  if (
+    /\bsolder\b/i.test(query) &&
+    /\breflow\b|\belectronics?\b|\bpcb\b/i.test(query) &&
+    !/\bgold\b|\bhermetic\b|\bhigh[- ]reliability\b|\baerospace\b/i.test(query)
+  ) {
+    weights = {
+      thermal: 0.4,
+      strength: 0.05,
+      weight: 0.05,
+      cost: 0.4,
+      corrosion: 0.1
+    };
   }
 
   return {
@@ -215,6 +303,8 @@ export function heuristicExtract(query: string): UserConstraints {
     electricallyConductive: needsConductive || undefined,
     electricallyInsulating: needsInsulating || undefined,
     thermallyConductive: needsThermalConductive || undefined,
+    preferredCategories: profile.categoryIntent.includeOnly,
+    semanticTags: semanticTagsFromProfile(profile),
     corrosionRequired,
     priorityWeights: normalisePriorityWeights(weights),
     rawQuery: query
@@ -262,9 +352,29 @@ CRITICAL WEIGHT RULES — violating these makes the app useless:
   "non-conductive" then electricallyInsulating MUST be true.
 - If user says "thermally conductive", "heat sink",
   "heat spreader" then thermallyConductive MUST be true.
+- Use preferredCategories when the user clearly asks for a family:
+  "metal" -> ["Metal"], "plastic"/"polymer" -> ["Polymer"],
+  "ceramic" -> ["Ceramic"], "composite"/"carbon fiber" -> ["Composite"],
+  "solder" -> ["Solder"]
+- Use semanticTags for application meaning, for example:
+  ["marine"], ["electronics"], ["probe"], ["machinable"],
+  ["biocompatible"], ["wear-resistant"], ["outdoor"]
 - NEVER use balanced weights (all 0.20) unless the user gave
   absolutely NO priority signal whatsoever.
 - Weights MUST sum to exactly 1.0.
+
+Few-shot examples:
+User: "acid resistant metal for chemical line"
+JSON:
+{"corrosionRequired":"excellent","preferredCategories":["Metal"],"semanticTags":["chemical","acid","corrosion"],"priorityWeights":{"thermal":0.05,"strength":0.05,"weight":0.05,"cost":0.05,"corrosion":0.8}}
+
+User: "3d printed plastic bracket for a motor at 85C"
+JSON:
+{"maxTemperature_c":85,"needsFDMPrintability":true,"preferredCategories":["Polymer"],"semanticTags":["fdm","3d-printing","structural"],"priorityWeights":{"thermal":0.35,"strength":0.25,"weight":0.15,"cost":0.2,"corrosion":0.05}}
+
+User: "machinable conductive metal for probe contact"
+JSON:
+{"electricallyConductive":true,"preferredCategories":["Metal"],"semanticTags":["machinable","probe","conductive"],"priorityWeights":{"thermal":0.1,"strength":0.3,"weight":0.05,"cost":0.45,"corrosion":0.1}}
 
 Also extract maxCost_usd_kg if user mentions a budget:
   "under $10/kg" → maxCost_usd_kg: 10
@@ -282,6 +392,8 @@ JSON schema (omit fields you cannot infer):
   "electricallyInsulating": boolean,
   "thermallyConductive": boolean,
   "needsFDMPrintability": boolean,
+  "preferredCategories": ["Metal"|"Polymer"|"Ceramic"|"Composite"|"Solder"],
+  "semanticTags": string[],
   "priorityWeights": {
     "thermal": number,
     "strength": number,
@@ -307,6 +419,9 @@ User query: ${query}`;
     return {
       ...fallback,
       ...parsed,
+      preferredCategories:
+        sanitisePreferredCategories(parsed.preferredCategories) ?? fallback.preferredCategories,
+      semanticTags: sanitiseSemanticTags(parsed.semanticTags) ?? fallback.semanticTags,
       needsFDMPrintability:
         profile.wantsFDM ? true : parsed.needsFDMPrintability ?? fallback.needsFDMPrintability,
       electricallyConductive:
@@ -383,6 +498,59 @@ export async function generateExplanation(
       `${top.tensile_strength_mpa} MPa, density of ${top.density_g_cm3} g/cm³, and costs approximately ` +
       `$${top.cost_usd_kg}/kg. The AI explanation is unavailable (Gemini quota exceeded) but the deterministic scoring ` +
       "above is fully reliable."
+    );
+  }
+}
+
+export async function generateNovelPredictionExplanation(
+  composition: string,
+  prediction: Omit<NovelMaterialPrediction, "explanation">
+): Promise<string> {
+  try {
+    const genAI = getClient();
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash"
+    });
+
+    const analogs = prediction.nearestAnalogs
+      .map(
+        (analog, index) =>
+          `${index + 1}. ${analog.formula} (${analog.category}) similarity ${Math.round(
+            analog.similarity * 100
+          )}%`
+      )
+      .join("\n");
+
+    const prompt =
+      `You are a materials scientist explaining a screening-level property prediction.\n` +
+      `Composition: ${composition}\n` +
+      `Predicted category: ${prediction.predictedCategory}\n` +
+      `Confidence: ${prediction.confidence}%\n` +
+      `Predicted properties:\n` +
+      `- Density: ${prediction.predictedProperties.density_g_cm3} g/cm^3\n` +
+      `- Tensile strength: ${prediction.predictedProperties.tensile_strength_mpa} MPa\n` +
+      `- Elastic modulus: ${prediction.predictedProperties.elastic_modulus_gpa} GPa\n` +
+      `- Thermal conductivity: ${prediction.predictedProperties.thermal_conductivity_w_mk} W/mK\n` +
+      `- Max service temperature: ${prediction.predictedProperties.max_service_temp_c} C\n` +
+      `- Electrical resistivity: ${prediction.predictedProperties.electrical_resistivity_ohm_m} ohm-m\n` +
+      `- Corrosion resistance: ${prediction.predictedProperties.corrosion_resistance}\n` +
+      `Nearest analogs:\n${analogs}\n\n` +
+      `Write exactly 2 short paragraphs with no bullet points. ` +
+      `Paragraph 1: what this chemistry most likely behaves like. ` +
+      `Paragraph 2: why the result should be treated as a screening estimate and what to validate next.`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch {
+    return (
+      `${composition} is predicted as a ${prediction.predictedCategory.toLowerCase()}-leaning chemistry with ` +
+      `${prediction.predictedProperties.tensile_strength_mpa} MPa tensile strength, ` +
+      `${prediction.predictedProperties.thermal_conductivity_w_mk.toFixed(1)} W/m.K thermal conductivity, and ` +
+      `${prediction.predictedProperties.max_service_temp_c} C service temperature. ` +
+      `This estimate comes from nearby chemistries such as ${prediction.nearestAnalogs
+        .slice(0, 2)
+        .map((analog) => analog.formula)
+        .join(" and ")}, so it should be used for screening rather than final design.`
     );
   }
 }

@@ -120,6 +120,9 @@ const AXIS_PATTERNS: Record<Axis, RegExp[]> = {
     /\bcorros(?:ion|ive)\b/i,
     /\brust\b/i,
     /\bmarine\b/i,
+    /\bboat\b/i,
+    /\bship\b/i,
+    /\boffshore\b/i,
     /\bseawater\b/i,
     /\bsaltwater\b/i,
     /\bocean\b/i,
@@ -205,6 +208,7 @@ const FLAG_PATTERNS = {
     /\belectrically conductive\b/i,
     /\belectrical conductivity\b/i,
     /\bconduct(?:ive|ivity)\b/i,
+    /\bcarry current\b/i,
     /\bcurrent\b/i,
     /\belectrode\b/i,
     /\bcontact\b/i,
@@ -227,10 +231,15 @@ const FLAG_PATTERNS = {
     /\bheat sink\b/i,
     /\bheat spreader\b/i,
     /\bconduct heat\b/i,
-    /\bheat dissipation\b/i
+    /\bheat dissipation\b/i,
+    /\bmove(?:s)? heat\b/i,
+    /\bdissipat(?:e|es) heat\b/i,
+    /\bpull(?:s)? heat away\b/i
   ],
   machinable: [
     /\bmachin(?:able|ing)\b/i,
+    /\beasy[- ]to[- ]machine\b/i,
+    /\beasy[- ]to[- ]machin(?:e|ing)\b/i,
     /\bmachine easily\b/i,
     /\bmilling\b/i,
     /\blathe\b/i,
@@ -247,6 +256,7 @@ const FLAG_PATTERNS = {
   ],
   biocompatible: [
     /\bbiocompat(?:ible|ibility)\b/i,
+    /\bbody[- ]safe\b/i,
     /\bimplant\b/i,
     /\bmedical\b/i,
     /\bbiomedical\b/i,
@@ -255,11 +265,16 @@ const FLAG_PATTERNS = {
   outdoor: [
     /\boutdoor\b/i,
     /\bweather\b/i,
+    /\bweatherproof\b/i,
     /\buv\b/i,
+    /\bsun\b/i,
     /\bsunlight\b/i
   ],
   marine: [
     /\bmarine\b/i,
+    /\bboat\b/i,
+    /\bship\b/i,
+    /\boffshore\b/i,
     /\bseawater\b/i,
     /\bsaltwater\b/i,
     /\bocean\b/i
@@ -441,4 +456,3 @@ export function inferQueryIntent(query: string): QueryIntentProfile {
     relevanceTerms: [...relevanceTerms]
   };
 }
-

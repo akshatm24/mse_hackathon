@@ -6,6 +6,8 @@ import { scoreMaterials } from "@/lib/scoring";
 import { normalisePriorityWeights } from "@/lib/weights";
 import { UserConstraints } from "@/types";
 
+const ALLOWED_CATEGORIES = new Set(["Metal", "Polymer", "Ceramic", "Composite", "Solder"]);
+
 function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | undefined {
   if (!value || typeof value !== "object") {
     return undefined;
@@ -46,6 +48,14 @@ function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | u
       typeof manual.needsFDMPrintability === "boolean"
         ? manual.needsFDMPrintability
         : undefined,
+    preferredCategories: Array.isArray(manual.preferredCategories)
+      ? manual.preferredCategories.filter((entry): entry is NonNullable<UserConstraints["preferredCategories"]>[number] =>
+          typeof entry === "string" && ALLOWED_CATEGORIES.has(entry)
+        )
+      : undefined,
+    semanticTags: Array.isArray(manual.semanticTags)
+      ? manual.semanticTags.filter((entry): entry is string => typeof entry === "string")
+      : undefined,
     priorityWeights: manual.priorityWeights
       ? normalisePriorityWeights(manual.priorityWeights)
       : undefined
@@ -75,6 +85,8 @@ function mergeConstraints(
       overrides.thermallyConductive ?? base.thermallyConductive,
     needsFDMPrintability:
       overrides.needsFDMPrintability ?? base.needsFDMPrintability,
+    preferredCategories: overrides.preferredCategories ?? base.preferredCategories,
+    semanticTags: overrides.semanticTags ?? base.semanticTags,
     priorityWeights: overrides.priorityWeights ?? base.priorityWeights,
     rawQuery: overrides.rawQuery ?? base.rawQuery
   };

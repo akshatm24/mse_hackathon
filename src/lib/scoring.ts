@@ -49,6 +49,81 @@ function safeArray(values: number[], fallback: number): number[] {
   return values.length > 0 ? values : [fallback];
 }
 
+function withSemanticHints(
+  profile: QueryIntentProfile,
+  constraints: UserConstraints
+): QueryIntentProfile {
+  const semanticTags = new Set((constraints.semanticTags ?? []).map((tag) => tag.toLowerCase()));
+  const preferredCategories = constraints.preferredCategories;
+
+  return {
+    ...profile,
+    categoryIntent:
+      preferredCategories && preferredCategories.length > 0
+        ? {
+            ...profile.categoryIntent,
+            includeOnly: preferredCategories
+          }
+        : profile.categoryIntent,
+    wantsFDM: profile.wantsFDM || semanticTags.has("fdm") || semanticTags.has("3d-printing"),
+    wantsElectricalConductivity:
+      profile.wantsElectricalConductivity ||
+      semanticTags.has("conductive") ||
+      semanticTags.has("electrical"),
+    wantsElectricalInsulation:
+      profile.wantsElectricalInsulation ||
+      semanticTags.has("insulator") ||
+      semanticTags.has("insulating") ||
+      semanticTags.has("dielectric"),
+    wantsThermalConductivity:
+      profile.wantsThermalConductivity ||
+      semanticTags.has("thermally-conductive") ||
+      semanticTags.has("thermal-management"),
+    wantsMachinability:
+      profile.wantsMachinability ||
+      semanticTags.has("machinable") ||
+      semanticTags.has("easy-machining"),
+    wantsHardness:
+      profile.wantsHardness ||
+      semanticTags.has("hard") ||
+      semanticTags.has("wear-resistant") ||
+      semanticTags.has("tooling"),
+    wantsBiocompatible:
+      profile.wantsBiocompatible ||
+      semanticTags.has("biocompatible") ||
+      semanticTags.has("implant") ||
+      semanticTags.has("medical"),
+    wantsOutdoor:
+      profile.wantsOutdoor ||
+      semanticTags.has("outdoor") ||
+      semanticTags.has("weather") ||
+      semanticTags.has("uv"),
+    wantsMarine:
+      profile.wantsMarine || semanticTags.has("marine") || semanticTags.has("seawater"),
+    wantsAcidResistance:
+      profile.wantsAcidResistance ||
+      semanticTags.has("acid") ||
+      semanticTags.has("chemical") ||
+      semanticTags.has("corrosion"),
+    wantsElectronics:
+      profile.wantsElectronics ||
+      semanticTags.has("electronics") ||
+      semanticTags.has("pcb") ||
+      semanticTags.has("solder"),
+    wantsProbe:
+      profile.wantsProbe ||
+      semanticTags.has("probe") ||
+      semanticTags.has("contact") ||
+      semanticTags.has("electrode"),
+    wantsStructural:
+      profile.wantsStructural ||
+      semanticTags.has("structural") ||
+      semanticTags.has("bracket") ||
+      semanticTags.has("frame"),
+    relevanceTerms: [...new Set([...profile.relevanceTerms, ...semanticTags])]
+  };
+}
+
 function hardFilter(
   db: Material[],
   constraints: UserConstraints,
@@ -238,7 +313,8 @@ function buildReason(
 function queryFitBonus(
   material: Material,
   profile: QueryIntentProfile,
-  filtered: Material[]
+  filtered: Material[],
+  rawQuery: string
 ): number {
   const text = `${material.name} ${material.subcategory} ${material.category} ${material.tags.join(" ")}`.toLowerCase();
   const resistivities = safeArray(
@@ -330,7 +406,18 @@ function queryFitBonus(
   }
 
   if (profile.wantsMarine) {
-    bonus += includesAny(text, ["marine", "seawater"]) ? 12 : CORROSION_RANK[material.corrosion_resistance] - 2;
+    bonus += includesAny(text, ["marine", "seawater", "chemical", "corrosion-resistant"])
+      ? 18
+      : -14;
+    if (material.category === "Ceramic") {
+      bonus -= 8;
+    }
+    if (
+      profile.wantsStructural &&
+      !includesAny(text, ["marine", "seawater", "chemical", "corrosion-resistant"])
+    ) {
+      bonus -= 6;
+    }
   }
 
   if (profile.wantsAcidResistance) {
@@ -358,6 +445,20 @@ function queryFitBonus(
       ? 18
       : -18;
     bonus += includesAny(text, ["brazing", "hvac", "plumbing", "stainless-joining"]) ? -18 : 0;
+    if (material.category === "Solder") {
+      bonus += 20 * linearCostEfficiency;
+      if (
+        material.cost_usd_kg > 1000 &&
+        !includesAny(rawQuery.toLowerCase(), [
+          "gold",
+          "hermetic",
+          "high-reliability",
+          "aerospace"
+        ])
+      ) {
+        bonus -= 18;
+      }
+    }
   }
 
   if (profile.wantsStructural) {
@@ -397,7 +498,10 @@ export function scoreMaterials(
   constraints: UserConstraints,
   db: Material[]
 ): RankedMaterial[] {
-  const profile = inferQueryIntent(constraints.rawQuery ?? "");
+  const profile = withSemanticHints(
+    inferQueryIntent(constraints.rawQuery ?? ""),
+    constraints
+  );
   const passes = [
     { relaxCost: false, relaxNumeric: false, ignoreCategory: false },
     { relaxCost: true, relaxNumeric: false, ignoreCategory: false },
@@ -467,7 +571,7 @@ export function scoreMaterials(
       weights.cost * costEfficiency +
       weights.corrosion * corrosion;
 
-    const queryBonus = queryFitBonus(material, profile, filtered);
+    const queryBonus = queryFitBonus(material, profile, filtered, constraints.rawQuery ?? "");
     const confidencePenalty = material.data_source.startsWith("Materials Project API")
       ? profile.wantsElectricalConductivity ||
         profile.wantsElectricalInsulation ||

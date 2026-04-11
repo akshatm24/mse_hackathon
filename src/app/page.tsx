@@ -5,6 +5,7 @@ import { startTransition, useEffect, useRef, useState } from "react";
 
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Header from "@/components/Header";
+import NovelAlloyPredictor from "@/components/NovelAlloyPredictor";
 import QueryForm from "@/components/QueryForm";
 import ResultsPanel from "@/components/ResultsPanel";
 import materialsDB from "@/lib/materials-db";
@@ -262,6 +263,10 @@ export default function HomePage() {
             />
           </section>
         ) : null}
+
+        <section className="mx-auto mt-12 max-w-6xl px-4">
+          <NovelAlloyPredictor />
+        </section>
 
         <section id="database" className="mx-auto mt-12 max-w-6xl px-4">
           <DatabaseExplorer />
