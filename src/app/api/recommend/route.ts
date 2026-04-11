@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { generateExplanation, extractConstraints } from "@/lib/gemini";
 import materialsDB from "@/lib/materials-db";
+import { retrieveRelevantMaterials } from "@/lib/rag";
 import { scoreMaterials } from "@/lib/scoring";
-import { UserConstraints } from "@/types";
+import { RankedMaterial, UserConstraints } from "@/types";
 
 function normaliseWeights(
   weights?: Partial<UserConstraints["priorityWeights"]>
@@ -111,16 +112,6 @@ function mergeConstraints(
   };
 }
 
-function fallbackExplanation(query: string, rankedMaterials: ReturnType<typeof scoreMaterials>) {
-  const top = rankedMaterials[0];
-  return (
-    `Based on your requirements, ${top?.name ?? "the top candidate"} is recommended as the optimal material for "${query}". ` +
-    `It offers a maximum service temperature of ${top?.max_service_temp_c}°C, tensile strength of ${top?.tensile_strength_mpa} MPa, ` +
-    `and density of ${top?.density_g_cm3} g/cm³ at approximately $${top?.cost_usd_kg}/kg. ` +
-    "Compare the top three candidates against fabrication method, fatigue, and supply chain before final selection."
-  );
-}
-
 async function buildRecommendationResponse({
   query,
   history,
@@ -136,13 +127,15 @@ async function buildRecommendationResponse({
     manualConstraints ? { ...manualConstraints, rawQuery: query } : undefined
   );
   const rankedMaterials = scoreMaterials(mergedConstraints, materialsDB);
-  let llmExplanation = "";
-
-  try {
-    llmExplanation = await generateExplanation(query, rankedMaterials, history);
-  } catch {
-    llmExplanation = fallbackExplanation(query, rankedMaterials);
-  }
+  const topCandidateIds = rankedMaterials.slice(0, 10).map((material) => material.id);
+  const ragBaseMaterials = await retrieveRelevantMaterials(query, 8, topCandidateIds);
+  const rankedById = new Map(rankedMaterials.map((material) => [material.id, material]));
+  const ragMaterials = ragBaseMaterials
+    .map((material) => rankedById.get(material.id))
+    .filter(Boolean) as RankedMaterial[];
+  const explanationMaterials =
+    ragMaterials.length > 0 ? ragMaterials : rankedMaterials.slice(0, 8);
+  const llmExplanation = await generateExplanation(query, explanationMaterials, history);
 
   return {
     rankedMaterials,
@@ -150,8 +143,9 @@ async function buildRecommendationResponse({
     inferredConstraints: mergedConstraints,
     clarifications: process.env.GEMINI_API_KEY
       ? "Constraints inferred from your description."
-      : "Gemini key not configured, so local heuristics were used to infer constraints.",
-    matchCount: rankedMaterials.length
+      : "Constraints inferred from your description using local engineering heuristics.",
+    matchCount: rankedMaterials.length,
+    ragRetrieved: explanationMaterials.map((material) => material.name)
   };
 }
 

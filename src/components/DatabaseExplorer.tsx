@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowUpDown, Search, X } from "lucide-react";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { ArrowUpDown, Loader2, Search, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import materialsDB from "@/lib/materials-db";
 import { Material } from "@/types";
@@ -15,6 +15,7 @@ type SortKey =
   | "cost_usd_kg";
 
 type SortDirection = "asc" | "desc";
+type SearchMode = "exact" | "semantic";
 
 function categoryTone(category: Material["category"]) {
   if (category === "Metal") {
@@ -57,7 +58,11 @@ function corrosionDot(level: Material["corrosion_resistance"]) {
 
 export default function DatabaseExplorer() {
   const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<SearchMode>("exact");
+  const [semanticResults, setSemanticResults] = useState<Material[]>([]);
+  const [semanticLoading, setSemanticLoading] = useState(false);
+  const [semanticError, setSemanticError] = useState("");
   const [category, setCategory] = useState<"All" | Material["category"]>("All");
   const [corrosion, setCorrosion] = useState<
     "All" | Material["corrosion_resistance"]
@@ -67,17 +72,89 @@ export default function DatabaseExplorer() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [activeMaterial, setActiveMaterial] = useState<Material | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    if (searchMode !== "semantic") {
+      setSemanticLoading(false);
+      setSemanticError("");
+      return;
+    }
+
+    const query = debouncedSearch.trim();
+    if (!query) {
+      setSemanticResults([]);
+      setSemanticError("");
+      setSemanticLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function runSemanticSearch() {
+      setSemanticLoading(true);
+      setSemanticError("");
+
+      try {
+        const response = await fetch("/api/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ query }),
+          signal: controller.signal
+        });
+
+        const payload = (await response.json()) as {
+          results?: Material[];
+          error?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Semantic search failed");
+        }
+
+        setSemanticResults(payload.results ?? []);
+      } catch (error) {
+        if ((error as Error).name === "AbortError") {
+          return;
+        }
+        setSemanticResults([]);
+        setSemanticError(
+          error instanceof Error ? error.message : "Semantic search failed"
+        );
+      } finally {
+        setSemanticLoading(false);
+      }
+    }
+
+    void runSemanticSearch();
+    return () => controller.abort();
+  }, [debouncedSearch, searchMode]);
 
   const filteredMaterials = useMemo(() => {
-    const searchValue = deferredSearch.trim().toLowerCase();
-    const next = materialsDB
+    const searchValue = debouncedSearch.trim().toLowerCase();
+    const baseMaterials =
+      searchMode === "semantic" && searchValue ? semanticResults : materialsDB;
+
+    const next = baseMaterials
       .filter((material) => {
-        if (!searchValue) {
+        if (searchMode === "semantic" || !searchValue) {
           return true;
         }
+
         return (
           material.name.toLowerCase().includes(searchValue) ||
           material.subcategory.toLowerCase().includes(searchValue) ||
+          material.formula_pretty?.toLowerCase().includes(searchValue) ||
           material.tags.some((tag) => tag.toLowerCase().includes(searchValue))
         );
       })
@@ -107,11 +184,23 @@ export default function DatabaseExplorer() {
       });
 
     return next;
-  }, [category, corrosion, deferredSearch, fdm, sortDirection, sortKey]);
+  }, [
+    category,
+    corrosion,
+    debouncedSearch,
+    fdm,
+    searchMode,
+    semanticResults,
+    sortDirection,
+    sortKey
+  ]);
+
+  const visibleMaterials = filteredMaterials.slice(0, visibleCount);
 
   useEffect(() => {
+    setVisibleCount(30);
     setHighlightedIndex(0);
-  }, [filteredMaterials.length]);
+  }, [filteredMaterials.length, category, corrosion, fdm, searchMode, debouncedSearch]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -153,14 +242,46 @@ export default function DatabaseExplorer() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-lg border border-surface-800 bg-surface-900 p-1 text-[11px]">
+          <button
+            type="button"
+            onClick={() => setSearchMode("exact")}
+            className={`rounded-md px-3 py-1.5 ${
+              searchMode === "exact"
+                ? "bg-surface-800 text-zinc-100"
+                : "text-surface-500"
+            }`}
+          >
+            Exact match
+          </button>
+          <button
+            type="button"
+            onClick={() => setSearchMode("semantic")}
+            className={`rounded-md px-3 py-1.5 ${
+              searchMode === "semantic"
+                ? "bg-surface-800 text-zinc-100"
+                : "text-surface-500"
+            }`}
+          >
+            Semantic search
+          </button>
+        </div>
+
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-600" />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search materials..."
+            placeholder={
+              searchMode === "semantic"
+                ? "Describe a material need..."
+                : "Search materials..."
+            }
             className="w-[240px] rounded-lg border border-surface-800 bg-surface-900 py-2 pl-8 pr-3 text-[12px] text-zinc-100 outline-none transition focus:border-amber-500/40"
           />
+          {semanticLoading && searchMode === "semantic" ? (
+            <Loader2 className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-brand" />
+          ) : null}
         </label>
 
         <select
@@ -201,22 +322,35 @@ export default function DatabaseExplorer() {
         </select>
 
         <div className="ml-auto text-[11px] text-surface-600">
-          Showing {filteredMaterials.length} of {materialsDB.length} materials
+          Showing {visibleMaterials.length} of {filteredMaterials.length} materials
         </div>
       </div>
+
+      {searchMode === "semantic" ? (
+        <div className="text-[11px] text-surface-500">
+          Use descriptive queries like{" "}
+          <span className="text-zinc-100">&quot;corrosion resistant for ocean&quot;</span>.
+        </div>
+      ) : null}
+
+      {semanticError ? (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 font-mono text-[11px] text-amber-200">
+          {semanticError}
+        </div>
+      ) : null}
 
       <div
         className="overflow-x-auto rounded-xl border border-surface-800"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (filteredMaterials.length === 0) {
+          if (visibleMaterials.length === 0) {
             return;
           }
 
           if (event.key === "ArrowDown") {
             event.preventDefault();
             setHighlightedIndex((current) =>
-              Math.min(current + 1, filteredMaterials.length - 1)
+              Math.min(current + 1, visibleMaterials.length - 1)
             );
           }
           if (event.key === "ArrowUp") {
@@ -225,7 +359,7 @@ export default function DatabaseExplorer() {
           }
           if (event.key === "Enter") {
             event.preventDefault();
-            setActiveMaterial(filteredMaterials[highlightedIndex]);
+            setActiveMaterial(visibleMaterials[highlightedIndex]);
           }
         }}
       >
@@ -277,11 +411,15 @@ export default function DatabaseExplorer() {
               </tr>
             ) : null}
 
-            {filteredMaterials.map((material, index) => (
+            {visibleMaterials.map((material, index) => (
               <tr
                 key={material.id}
                 className={`cursor-pointer border-b border-brand-subtle ${
-                  highlightedIndex === index ? "bg-[#1F1F23]" : index % 2 === 0 ? "bg-surface-900" : "bg-[#141416]"
+                  highlightedIndex === index
+                    ? "bg-[#1F1F23]"
+                    : index % 2 === 0
+                      ? "bg-surface-900"
+                      : "bg-[#141416]"
                 } transition`}
                 onMouseEnter={() => setHighlightedIndex(index)}
                 onClick={() => setActiveMaterial(material)}
@@ -312,14 +450,18 @@ export default function DatabaseExplorer() {
                   ${material.cost_usd_kg.toFixed(2)}
                 </td>
                 <td className="px-3 py-2 text-[12px]">
-                  {material.printability_fdm !== "n/a" && material.printability_fdm !== "poor" ? (
+                  {material.printability_fdm !== "n/a" &&
+                  material.printability_fdm !== "poor" ? (
                     <span className="text-emerald-400">✓</span>
                   ) : (
                     <span className="text-surface-700">×</span>
                   )}
                 </td>
                 <td className="px-3 py-2 text-[11px] text-surface-400">
-                  <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: corrosionDot(material.corrosion_resistance) }} />
+                  <span
+                    className="mr-1 inline-block h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: corrosionDot(material.corrosion_resistance) }}
+                  />
                   {material.corrosion_resistance}
                 </td>
               </tr>
@@ -327,6 +469,18 @@ export default function DatabaseExplorer() {
           </tbody>
         </table>
       </div>
+
+      {filteredMaterials.length > visibleMaterials.length ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((current) => current + 30)}
+            className="rounded-full border border-surface-800 px-4 py-2 text-[12px] text-surface-400 transition hover:text-zinc-100"
+          >
+            Load more
+          </button>
+        </div>
+      ) : null}
 
       {activeMaterial ? (
         <div
@@ -363,24 +517,55 @@ export default function DatabaseExplorer() {
             <div className="grid gap-3 px-5 py-4 md:grid-cols-2">
               {[
                 ["Subcategory", activeMaterial.subcategory],
+                ["Formula", activeMaterial.formula_pretty ?? "—"],
                 ["Density", `${activeMaterial.density_g_cm3.toFixed(2)} g/cm³`],
                 ["Tensile Strength", `${activeMaterial.tensile_strength_mpa} MPa`],
                 ["Yield Strength", `${activeMaterial.yield_strength_mpa} MPa`],
                 ["Elastic Modulus", `${activeMaterial.elastic_modulus_gpa.toFixed(1)} GPa`],
-                ["Hardness", activeMaterial.hardness_vickers === null ? "—" : `${activeMaterial.hardness_vickers} HV`],
-                ["Thermal Conductivity", `${activeMaterial.thermal_conductivity_w_mk.toFixed(2)} W/m·K`],
-                ["Specific Heat", `${activeMaterial.specific_heat_j_gk.toFixed(2)} J/g·K`],
-                ["Melting Point", activeMaterial.melting_point_c === null ? "—" : `${activeMaterial.melting_point_c}°C`],
-                ["Glass Transition", activeMaterial.glass_transition_c === null ? "—" : `${activeMaterial.glass_transition_c}°C`],
+                [
+                  "Hardness",
+                  activeMaterial.hardness_vickers === null
+                    ? "—"
+                    : `${activeMaterial.hardness_vickers} HV`
+                ],
+                [
+                  "Thermal Conductivity",
+                  `${activeMaterial.thermal_conductivity_w_mk.toFixed(2)} W/m·K`
+                ],
+                [
+                  "Specific Heat",
+                  `${activeMaterial.specific_heat_j_gk.toFixed(2)} J/g·K`
+                ],
+                [
+                  "Melting Point",
+                  activeMaterial.melting_point_c === null
+                    ? "—"
+                    : `${activeMaterial.melting_point_c}°C`
+                ],
+                [
+                  "Glass Transition",
+                  activeMaterial.glass_transition_c === null
+                    ? "—"
+                    : `${activeMaterial.glass_transition_c}°C`
+                ],
                 ["Max Service Temp", `${activeMaterial.max_service_temp_c}°C`],
-                ["Thermal Expansion", `${activeMaterial.thermal_expansion_ppm_k.toFixed(1)} ppm/K`],
-                ["Resistivity", `${activeMaterial.electrical_resistivity_ohm_m.toExponential(2)} Ω·m`],
+                [
+                  "Thermal Expansion",
+                  `${activeMaterial.thermal_expansion_ppm_k.toFixed(1)} ppm/K`
+                ],
+                [
+                  "Resistivity",
+                  `${activeMaterial.electrical_resistivity_ohm_m.toExponential(2)} Ω·m`
+                ],
                 ["Corrosion", activeMaterial.corrosion_resistance],
                 ["Machinability", activeMaterial.machinability],
                 ["FDM Printability", activeMaterial.printability_fdm],
                 ["Cost", `$${activeMaterial.cost_usd_kg.toFixed(2)}/kg`]
               ].map(([label, value]) => (
-                <div key={label} className="rounded-xl border border-surface-800 bg-surface-950 px-3 py-2">
+                <div
+                  key={label}
+                  className="rounded-xl border border-surface-800 bg-surface-950 px-3 py-2"
+                >
                   <div className="text-[11px] text-surface-600">{label}</div>
                   <div className="mt-1 font-mono text-[13px] text-zinc-100">{value}</div>
                 </div>

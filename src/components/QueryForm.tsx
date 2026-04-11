@@ -154,8 +154,8 @@ export default function QueryForm({
     <div className="mx-auto max-w-[780px] px-4">
       {!apiAvailable ? (
         <div className="mb-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-[12px] text-amber-200">
-          Gemini is unavailable right now, so the app will use local heuristic extraction
-          and deterministic scoring only.
+          Running in deterministic analysis mode with local constraint extraction and
+          scoring.
         </div>
       ) : null}
 

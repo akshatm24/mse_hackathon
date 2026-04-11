@@ -1,6 +1,7 @@
 import { Material } from "@/types";
+import mpMaterialsGenerated from "@/lib/mp-materials-generated";
 
-export const materialsDB: Material[] = [
+export const curatedMaterials: Material[] = [
   {
     id: "ss316l",
     name: "Stainless Steel 316L",
@@ -1560,7 +1561,794 @@ export const materialsDB: Material[] = [
     cost_usd_kg: 40,
     tags: ["lead-free", "plumbing", "electronics", "rohs"],
     data_source: "MatWeb"
+  },
+  {
+    id: "ss430",
+    name: "Stainless Steel 430",
+    category: "Metal",
+    subcategory: "Ferritic Stainless Steel",
+    density_g_cm3: 7.8,
+    tensile_strength_mpa: 483,
+    yield_strength_mpa: 310,
+    elastic_modulus_gpa: 200,
+    hardness_vickers: 185,
+    thermal_conductivity_w_mk: 26.1,
+    specific_heat_j_gk: 0.46,
+    melting_point_c: 1425,
+    glass_transition_c: null,
+    max_service_temp_c: 815,
+    thermal_expansion_ppm_k: 10.4,
+    electrical_resistivity_ohm_m: 6e-7,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "n/a",
+    cost_usd_kg: 2.8,
+    tags: ["appliances", "automotive-trim", "cheap-stainless"],
+    data_source: "ASM Handbook Vol 1"
+  },
+  {
+    id: "ss17_4ph",
+    name: "Stainless Steel 17-4 PH",
+    category: "Metal",
+    subcategory: "Precipitation Hardened SS",
+    density_g_cm3: 7.78,
+    tensile_strength_mpa: 1310,
+    yield_strength_mpa: 1170,
+    elastic_modulus_gpa: 197,
+    hardness_vickers: 375,
+    thermal_conductivity_w_mk: 17.9,
+    specific_heat_j_gk: 0.5,
+    melting_point_c: 1404,
+    glass_transition_c: null,
+    max_service_temp_c: 315,
+    thermal_expansion_ppm_k: 10.8,
+    electrical_resistivity_ohm_m: 7.8e-7,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "n/a",
+    cost_usd_kg: 7.5,
+    tags: ["aerospace", "oil-gas", "high-strength", "am-powder"],
+    data_source: "ASM Handbook Vol 1"
+  },
+  {
+    id: "hadfield",
+    name: "Hadfield Manganese Steel",
+    category: "Metal",
+    subcategory: "Austenitic Manganese Steel",
+    density_g_cm3: 7.8,
+    tensile_strength_mpa: 900,
+    yield_strength_mpa: 380,
+    elastic_modulus_gpa: 200,
+    hardness_vickers: 200,
+    thermal_conductivity_w_mk: 14,
+    specific_heat_j_gk: 0.5,
+    melting_point_c: 1400,
+    glass_transition_c: null,
+    max_service_temp_c: 250,
+    thermal_expansion_ppm_k: 17,
+    electrical_resistivity_ohm_m: 6e-7,
+    corrosion_resistance: "poor",
+    machinability: "poor",
+    printability_fdm: "n/a",
+    cost_usd_kg: 1.5,
+    tags: ["mining", "crushing", "work-hardening", "impact"],
+    data_source: "ASM Handbook Vol 1"
+  },
+  {
+    id: "hsla_a36",
+    name: "HSLA Steel A36",
+    category: "Metal",
+    subcategory: "Structural Steel",
+    density_g_cm3: 7.85,
+    tensile_strength_mpa: 400,
+    yield_strength_mpa: 250,
+    elastic_modulus_gpa: 200,
+    hardness_vickers: 119,
+    thermal_conductivity_w_mk: 51.9,
+    specific_heat_j_gk: 0.49,
+    melting_point_c: 1425,
+    glass_transition_c: null,
+    max_service_temp_c: 340,
+    thermal_expansion_ppm_k: 11.7,
+    electrical_resistivity_ohm_m: 1.7e-7,
+    corrosion_resistance: "poor",
+    machinability: "excellent",
+    printability_fdm: "n/a",
+    cost_usd_kg: 0.7,
+    tags: ["construction", "bridges", "cheapest-structural"],
+    data_source: "ASTM A36"
+  },
+  {
+    id: "al5083",
+    name: "Aluminum 5083-H116",
+    category: "Metal",
+    subcategory: "Aluminum Alloy",
+    density_g_cm3: 2.66,
+    tensile_strength_mpa: 317,
+    yield_strength_mpa: 228,
+    elastic_modulus_gpa: 70.3,
+    hardness_vickers: 75,
+    thermal_conductivity_w_mk: 121,
+    specific_heat_j_gk: 0.9,
+    melting_point_c: 591,
+    glass_transition_c: null,
+    max_service_temp_c: 65,
+    thermal_expansion_ppm_k: 23.8,
+    electrical_resistivity_ohm_m: 5.9e-8,
+    corrosion_resistance: "excellent",
+    machinability: "good",
+    printability_fdm: "n/a",
+    cost_usd_kg: 3.2,
+    tags: ["marine", "cryogenic", "LNG-tank", "shipbuilding"],
+    data_source: "ASM Handbook Vol 2"
+  },
+  {
+    id: "al2219",
+    name: "Aluminum 2219-T87",
+    category: "Metal",
+    subcategory: "Aluminum Alloy",
+    density_g_cm3: 2.84,
+    tensile_strength_mpa: 476,
+    yield_strength_mpa: 393,
+    elastic_modulus_gpa: 73.8,
+    hardness_vickers: 130,
+    thermal_conductivity_w_mk: 121,
+    specific_heat_j_gk: 0.864,
+    melting_point_c: 643,
+    glass_transition_c: null,
+    max_service_temp_c: 175,
+    thermal_expansion_ppm_k: 22.3,
+    electrical_resistivity_ohm_m: 5.8e-8,
+    corrosion_resistance: "fair",
+    machinability: "good",
+    printability_fdm: "n/a",
+    cost_usd_kg: 5.5,
+    tags: ["aerospace", "cryogenic", "rocket-tank", "weldable"],
+    data_source: "ASM Handbook Vol 2"
+  },
+  {
+    id: "cupronickel_90_10",
+    name: "Cupronickel 90/10",
+    category: "Metal",
+    subcategory: "Copper-Nickel Alloy",
+    density_g_cm3: 8.94,
+    tensile_strength_mpa: 300,
+    yield_strength_mpa: 110,
+    elastic_modulus_gpa: 135,
+    hardness_vickers: 75,
+    thermal_conductivity_w_mk: 45,
+    specific_heat_j_gk: 0.377,
+    melting_point_c: 1100,
+    glass_transition_c: null,
+    max_service_temp_c: 250,
+    thermal_expansion_ppm_k: 17.1,
+    electrical_resistivity_ohm_m: 1.9e-7,
+    corrosion_resistance: "excellent",
+    machinability: "good",
+    printability_fdm: "n/a",
+    cost_usd_kg: 12,
+    tags: ["marine", "heat-exchanger", "seawater", "condenser"],
+    data_source: "CDA Copper Development Association"
+  },
+  {
+    id: "phosphor_bronze",
+    name: "Phosphor Bronze C510",
+    category: "Metal",
+    subcategory: "Tin Bronze",
+    density_g_cm3: 8.86,
+    tensile_strength_mpa: 455,
+    yield_strength_mpa: 380,
+    elastic_modulus_gpa: 110,
+    hardness_vickers: 135,
+    thermal_conductivity_w_mk: 84,
+    specific_heat_j_gk: 0.38,
+    melting_point_c: 1000,
+    glass_transition_c: null,
+    max_service_temp_c: 150,
+    thermal_expansion_ppm_k: 17.8,
+    electrical_resistivity_ohm_m: 9e-8,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "n/a",
+    cost_usd_kg: 11,
+    tags: ["springs", "connectors", "bearings", "fatigue"],
+    data_source: "CDA Copper Development Association"
+  },
+  {
+    id: "ti_beta_21s",
+    name: "Ti-15Mo-3Nb-3Al-0.2Si (Beta 21S)",
+    category: "Metal",
+    subcategory: "Beta Titanium Alloy",
+    density_g_cm3: 4.94,
+    tensile_strength_mpa: 1000,
+    yield_strength_mpa: 970,
+    elastic_modulus_gpa: 100,
+    hardness_vickers: 320,
+    thermal_conductivity_w_mk: 8.5,
+    specific_heat_j_gk: 0.53,
+    melting_point_c: 1650,
+    glass_transition_c: null,
+    max_service_temp_c: 315,
+    thermal_expansion_ppm_k: 7.4,
+    electrical_resistivity_ohm_m: 1.9e-6,
+    corrosion_resistance: "excellent",
+    machinability: "fair",
+    printability_fdm: "n/a",
+    cost_usd_kg: 80,
+    tags: ["aerospace", "biomedical", "high-strength-Ti"],
+    data_source: "TIMET datasheet"
+  },
+  {
+    id: "rene41",
+    name: "René 41",
+    category: "Metal",
+    subcategory: "Nickel Superalloy",
+    density_g_cm3: 8.25,
+    tensile_strength_mpa: 1420,
+    yield_strength_mpa: 1060,
+    elastic_modulus_gpa: 219,
+    hardness_vickers: 390,
+    thermal_conductivity_w_mk: 9.8,
+    specific_heat_j_gk: 0.42,
+    melting_point_c: 1315,
+    glass_transition_c: null,
+    max_service_temp_c: 980,
+    thermal_expansion_ppm_k: 13.1,
+    electrical_resistivity_ohm_m: 1.24e-6,
+    corrosion_resistance: "excellent",
+    machinability: "poor",
+    printability_fdm: "n/a",
+    cost_usd_kg: 100,
+    tags: ["aerospace", "turbine", "high-temp", "jet-engine"],
+    data_source: "Special Metals datasheet"
+  },
+  {
+    id: "haynes230",
+    name: "Haynes 230",
+    category: "Metal",
+    subcategory: "Nickel Superalloy",
+    density_g_cm3: 8.97,
+    tensile_strength_mpa: 800,
+    yield_strength_mpa: 400,
+    elastic_modulus_gpa: 211,
+    hardness_vickers: 200,
+    thermal_conductivity_w_mk: 8.9,
+    specific_heat_j_gk: 0.39,
+    melting_point_c: 1301,
+    glass_transition_c: null,
+    max_service_temp_c: 1150,
+    thermal_expansion_ppm_k: 12.8,
+    electrical_resistivity_ohm_m: 1.25e-6,
+    corrosion_resistance: "excellent",
+    machinability: "poor",
+    printability_fdm: "n/a",
+    cost_usd_kg: 85,
+    tags: ["combustion", "chemical", "high-temp", "oxidation"],
+    data_source: "Haynes International datasheet"
+  },
+  {
+    id: "pei_general",
+    name: "PEI (General Purpose)",
+    category: "Polymer",
+    subcategory: "Polyetherimide",
+    density_g_cm3: 1.27,
+    tensile_strength_mpa: 105,
+    yield_strength_mpa: 97,
+    elastic_modulus_gpa: 3.3,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 0.22,
+    specific_heat_j_gk: 1.25,
+    melting_point_c: null,
+    glass_transition_c: 217,
+    max_service_temp_c: 170,
+    thermal_expansion_ppm_k: 56,
+    electrical_resistivity_ohm_m: 1e15,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "poor",
+    cost_usd_kg: 60,
+    tags: ["aerospace", "medical", "electrical", "high-temp"],
+    data_source: "SABIC datasheet"
+  },
+  {
+    id: "lcp",
+    name: "LCP (Liquid Crystal Polymer)",
+    category: "Polymer",
+    subcategory: "High-Perf Thermoplastic",
+    density_g_cm3: 1.41,
+    tensile_strength_mpa: 180,
+    yield_strength_mpa: 165,
+    elastic_modulus_gpa: 9,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 0.28,
+    specific_heat_j_gk: 1.18,
+    melting_point_c: null,
+    glass_transition_c: 280,
+    max_service_temp_c: 240,
+    thermal_expansion_ppm_k: 3,
+    electrical_resistivity_ohm_m: 1e15,
+    corrosion_resistance: "excellent",
+    machinability: "good",
+    printability_fdm: "poor",
+    cost_usd_kg: 30,
+    tags: ["electronics", "connector", "pcb", "low-warpage"],
+    data_source: "Celanese Vectra datasheet"
+  },
+  {
+    id: "pan_carbon_precursor",
+    name: "Polyacrylonitrile (PAN)",
+    category: "Polymer",
+    subcategory: "Carbon Fiber Precursor",
+    density_g_cm3: 1.18,
+    tensile_strength_mpa: 65,
+    yield_strength_mpa: 55,
+    elastic_modulus_gpa: 3.5,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 0.26,
+    specific_heat_j_gk: 1.34,
+    melting_point_c: null,
+    glass_transition_c: 85,
+    max_service_temp_c: 80,
+    thermal_expansion_ppm_k: 70,
+    electrical_resistivity_ohm_m: 1e14,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "poor",
+    cost_usd_kg: 5,
+    tags: ["carbon-fiber-precursor", "fiber", "textile"],
+    data_source: "MatWeb"
+  },
+  {
+    id: "pa66",
+    name: "Nylon PA66",
+    category: "Polymer",
+    subcategory: "Polyamide / Engineering",
+    density_g_cm3: 1.14,
+    tensile_strength_mpa: 82,
+    yield_strength_mpa: 75,
+    elastic_modulus_gpa: 3,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 0.26,
+    specific_heat_j_gk: 1.67,
+    melting_point_c: null,
+    glass_transition_c: 70,
+    max_service_temp_c: 130,
+    thermal_expansion_ppm_k: 80,
+    electrical_resistivity_ohm_m: 1e13,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "fair",
+    cost_usd_kg: 4,
+    tags: ["gears", "bearings", "automotive", "general-purpose"],
+    data_source: "MatWeb"
+  },
+  {
+    id: "pa6",
+    name: "Nylon PA6",
+    category: "Polymer",
+    subcategory: "Polyamide / Engineering",
+    density_g_cm3: 1.13,
+    tensile_strength_mpa: 70,
+    yield_strength_mpa: 60,
+    elastic_modulus_gpa: 2.7,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 0.25,
+    specific_heat_j_gk: 1.6,
+    melting_point_c: null,
+    glass_transition_c: 50,
+    max_service_temp_c: 110,
+    thermal_expansion_ppm_k: 85,
+    electrical_resistivity_ohm_m: 1e13,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "fair",
+    cost_usd_kg: 3,
+    tags: ["general-purpose", "automotive", "cheap-nylon"],
+    data_source: "MatWeb"
+  },
+  {
+    id: "pbt",
+    name: "PBT (Polybutylene Terephthalate)",
+    category: "Polymer",
+    subcategory: "Thermoplastic Polyester",
+    density_g_cm3: 1.31,
+    tensile_strength_mpa: 56,
+    yield_strength_mpa: 52,
+    elastic_modulus_gpa: 2.6,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 0.21,
+    specific_heat_j_gk: 1.25,
+    melting_point_c: null,
+    glass_transition_c: 50,
+    max_service_temp_c: 120,
+    thermal_expansion_ppm_k: 70,
+    electrical_resistivity_ohm_m: 1e14,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "poor",
+    cost_usd_kg: 4,
+    tags: ["connector", "automotive", "electrical", "dimensional-stable"],
+    data_source: "MatWeb"
+  },
+  {
+    id: "sialon",
+    name: "Sialon (Si6-zAlzOzN8-z)",
+    category: "Ceramic",
+    subcategory: "Non-Oxide Ceramic",
+    density_g_cm3: 3.24,
+    tensile_strength_mpa: 780,
+    yield_strength_mpa: 780,
+    elastic_modulus_gpa: 290,
+    hardness_vickers: 1650,
+    thermal_conductivity_w_mk: 21,
+    specific_heat_j_gk: 0.75,
+    melting_point_c: 1700,
+    glass_transition_c: null,
+    max_service_temp_c: 1000,
+    thermal_expansion_ppm_k: 3.2,
+    electrical_resistivity_ohm_m: 1e12,
+    corrosion_resistance: "excellent",
+    machinability: "poor",
+    printability_fdm: "n/a",
+    cost_usd_kg: 120,
+    tags: ["cutting-tools", "wear", "thermal-shock", "molten-metal"],
+    data_source: "MatWeb"
+  },
+  {
+    id: "ytria_stabilized_zro2",
+    name: "Yttria-Stabilized Zirconia (YSZ)",
+    category: "Ceramic",
+    subcategory: "Thermal Barrier Coating",
+    density_g_cm3: 5.9,
+    tensile_strength_mpa: 200,
+    yield_strength_mpa: 200,
+    elastic_modulus_gpa: 48,
+    hardness_vickers: 1200,
+    thermal_conductivity_w_mk: 2.2,
+    specific_heat_j_gk: 0.52,
+    melting_point_c: 2680,
+    glass_transition_c: null,
+    max_service_temp_c: 1200,
+    thermal_expansion_ppm_k: 10.5,
+    electrical_resistivity_ohm_m: 1e10,
+    corrosion_resistance: "excellent",
+    machinability: "poor",
+    printability_fdm: "n/a",
+    cost_usd_kg: 80,
+    tags: ["thermal-barrier", "TBC", "turbine-coating", "dental"],
+    data_source: "Saint-Gobain datasheet"
+  },
+  {
+    id: "hydroxyapatite",
+    name: "Hydroxyapatite (HA)",
+    category: "Ceramic",
+    subcategory: "Bioceramics",
+    density_g_cm3: 3.16,
+    tensile_strength_mpa: 50,
+    yield_strength_mpa: 50,
+    elastic_modulus_gpa: 80,
+    hardness_vickers: 600,
+    thermal_conductivity_w_mk: 1.3,
+    specific_heat_j_gk: 0.77,
+    melting_point_c: 1670,
+    glass_transition_c: null,
+    max_service_temp_c: 800,
+    thermal_expansion_ppm_k: 13.3,
+    electrical_resistivity_ohm_m: 1e11,
+    corrosion_resistance: "excellent",
+    machinability: "poor",
+    printability_fdm: "n/a",
+    cost_usd_kg: 200,
+    tags: ["biomedical", "bone-scaffold", "implant", "coating"],
+    data_source: "Sigma-Aldrich datasheet"
+  },
+  {
+    id: "cfrp_woven",
+    name: "CFRP Woven 0/90",
+    category: "Composite",
+    subcategory: "Carbon Fiber Woven",
+    density_g_cm3: 1.55,
+    tensile_strength_mpa: 600,
+    yield_strength_mpa: 600,
+    elastic_modulus_gpa: 70,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 5,
+    specific_heat_j_gk: 0.84,
+    melting_point_c: null,
+    glass_transition_c: 120,
+    max_service_temp_c: 150,
+    thermal_expansion_ppm_k: 3,
+    electrical_resistivity_ohm_m: 1.5e-4,
+    corrosion_resistance: "excellent",
+    machinability: "fair",
+    printability_fdm: "n/a",
+    cost_usd_kg: 60,
+    tags: ["aerospace", "quasi-isotropic", "panel", "woven"],
+    data_source: "Hexcel datasheet"
+  },
+  {
+    id: "e_glass_epoxy",
+    name: "E-Glass/Epoxy (woven)",
+    category: "Composite",
+    subcategory: "Glass Fiber Composite",
+    density_g_cm3: 1.85,
+    tensile_strength_mpa: 300,
+    yield_strength_mpa: 300,
+    elastic_modulus_gpa: 18,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 0.3,
+    specific_heat_j_gk: 0.95,
+    melting_point_c: null,
+    glass_transition_c: 120,
+    max_service_temp_c: 120,
+    thermal_expansion_ppm_k: 18,
+    electrical_resistivity_ohm_m: 1e12,
+    corrosion_resistance: "excellent",
+    machinability: "fair",
+    printability_fdm: "n/a",
+    cost_usd_kg: 12,
+    tags: ["marine", "PCB-substrate", "wind-blade", "structural"],
+    data_source: "MatWeb"
+  },
+  {
+    id: "basalt_fiber",
+    name: "Basalt Fiber / Epoxy",
+    category: "Composite",
+    subcategory: "Natural Fiber Composite",
+    density_g_cm3: 1.9,
+    tensile_strength_mpa: 480,
+    yield_strength_mpa: 480,
+    elastic_modulus_gpa: 25,
+    hardness_vickers: null,
+    thermal_conductivity_w_mk: 0.4,
+    specific_heat_j_gk: 1,
+    melting_point_c: null,
+    glass_transition_c: 120,
+    max_service_temp_c: 120,
+    thermal_expansion_ppm_k: 8,
+    electrical_resistivity_ohm_m: 1e11,
+    corrosion_resistance: "excellent",
+    machinability: "fair",
+    printability_fdm: "n/a",
+    cost_usd_kg: 20,
+    tags: ["eco-friendly", "infrastructure", "basalt", "green"],
+    data_source: "MatWeb"
+  },
+  {
+    id: "indalloy290",
+    name: "Indalloy 290 (In97Ag3)",
+    category: "Solder",
+    subcategory: "Indium-Silver",
+    density_g_cm3: 7.36,
+    tensile_strength_mpa: 14,
+    yield_strength_mpa: 8,
+    elastic_modulus_gpa: 11,
+    hardness_vickers: 2,
+    thermal_conductivity_w_mk: 73,
+    specific_heat_j_gk: 0.24,
+    melting_point_c: 143,
+    glass_transition_c: null,
+    max_service_temp_c: 100,
+    thermal_expansion_ppm_k: 24.8,
+    electrical_resistivity_ohm_m: 8e-8,
+    corrosion_resistance: "good",
+    machinability: "good",
+    printability_fdm: "n/a",
+    cost_usd_kg: 700,
+    tags: ["low-temp", "cryogenic", "bonding", "indium"],
+    data_source: "Indium Corporation datasheet"
+  },
+  {
+    id: "nickel_braze_bni2",
+    name: "Nickel Braze BNi-2",
+    category: "Solder",
+    subcategory: "Nickel Braze",
+    density_g_cm3: 7.7,
+    tensile_strength_mpa: 620,
+    yield_strength_mpa: 450,
+    elastic_modulus_gpa: 165,
+    hardness_vickers: 200,
+    thermal_conductivity_w_mk: 14,
+    specific_heat_j_gk: 0.44,
+    melting_point_c: 1000,
+    glass_transition_c: null,
+    max_service_temp_c: 900,
+    thermal_expansion_ppm_k: 13,
+    electrical_resistivity_ohm_m: 1.1e-6,
+    corrosion_resistance: "excellent",
+    machinability: "fair",
+    printability_fdm: "n/a",
+    cost_usd_kg: 120,
+    tags: ["aerospace-braze", "vacuum-braze", "high-temp-join"],
+    data_source: "Wall Colmonoy datasheet"
   }
 ];
+
+const FRIENDLY_NAMES: Record<string, string> = {
+  Ag: "Silver Ag",
+  Al: "Aluminum (pure)",
+  Au: "Gold Au",
+  Be: "Beryllium Be",
+  Co: "Cobalt Co",
+  Cr: "Chromium Cr",
+  Cu: "Copper (pure)",
+  Fe: "Iron Fe",
+  Ge: "Germanium Ge",
+  Hf: "Hafnium Hf",
+  Ir: "Iridium Ir",
+  Mg: "Magnesium (pure)",
+  Mo: "Molybdenum Mo",
+  Nb: "Niobium Nb",
+  Ni: "Nickel (pure)",
+  Os: "Osmium Os",
+  Pb: "Lead Pb",
+  Pd: "Palladium Pd",
+  Pt: "Platinum Pt",
+  Re: "Rhenium Re",
+  Rh: "Rhodium Rh",
+  Ru: "Ruthenium Ru",
+  Si: "Silicon Si",
+  Sn: "Tin Sn",
+  Ta: "Tantalum Ta",
+  Ti: "Titanium (pure)",
+  V: "Vanadium V",
+  W: "Tungsten W",
+  Zn: "Zinc Zn",
+  Zr: "Zirconium Zr",
+  Al2O3: "Alumina Al2O3 (MP)",
+  ZrO2: "Zirconia ZrO2 (MP)",
+  SiC: "Silicon Carbide SiC (MP)",
+  Si3N4: "Silicon Nitride Si3N4 (MP)",
+  AlN: "Aluminum Nitride AlN (MP)",
+  TiN: "Titanium Nitride TiN (MP)",
+  TiO2: "Titania TiO2 (MP)",
+  MgO: "Magnesia MgO (MP)",
+  BN: "Boron Nitride BN (MP)",
+  TiB2: "Titanium Diboride TiB2 (MP)",
+  ZrB2: "Zirconium Diboride ZrB2 (MP)",
+  NiAl: "Nickel Aluminide NiAl",
+  TiAl: "Titanium Aluminide TiAl",
+  NiTi: "Nitinol NiTi (MP)",
+  FeAl: "Iron Aluminide FeAl",
+  Fe3Al: "Iron Aluminide Fe3Al",
+  GaAs: "Gallium Arsenide GaAs",
+  GaN: "Gallium Nitride GaN",
+  InP: "Indium Phosphide InP",
+  B4C: "Boron Carbide B4C",
+  WC: "Tungsten Carbide WC"
+};
+
+const CURATED_DUPLICATE_FORMULAS = new Set([
+  "Ag",
+  "Al",
+  "Au",
+  "Cu",
+  "Mo",
+  "Ni",
+  "Ti",
+  "W"
+]);
+
+const MP_NAME_PATTERN = /\bmp-\d+\b/i;
+
+function normaliseFormula(formula: string): string {
+  return formula.replace(/\s+/g, "");
+}
+
+function extractFormulaFromName(name: string): string | null {
+  const stripped = name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (!stripped) {
+    return null;
+  }
+
+  const cleaned = normaliseFormula(stripped);
+  return /^[A-Za-z0-9.+-]+$/.test(cleaned) ? cleaned : null;
+}
+
+function getBaseFormula(material: Material): string | null {
+  if (material.formula_pretty) {
+    return normaliseFormula(material.formula_pretty);
+  }
+
+  if (material.material_id && material.name) {
+    const fromName = extractFormulaFromName(material.name);
+    if (fromName) {
+      return fromName;
+    }
+  }
+
+  if (MP_NAME_PATTERN.test(material.name)) {
+    return extractFormulaFromName(material.name);
+  }
+
+  return null;
+}
+
+function isMaterialsProjectMaterial(material: Material): boolean {
+  return (
+    material.source_kind === "materials-project" ||
+    Boolean(material.material_id) ||
+    MP_NAME_PATTERN.test(material.name) ||
+    material.id.startsWith("mp_")
+  );
+}
+
+function choosePreferredMpMaterial(left: Material, right: Material): Material {
+  const leftHull = left.energy_above_hull ?? Number.POSITIVE_INFINITY;
+  const rightHull = right.energy_above_hull ?? Number.POSITIVE_INFINITY;
+
+  if (leftHull !== rightHull) {
+    return leftHull < rightHull ? left : right;
+  }
+
+  if (left.tensile_strength_mpa !== right.tensile_strength_mpa) {
+    return left.tensile_strength_mpa > right.tensile_strength_mpa ? left : right;
+  }
+
+  return left.name.localeCompare(right.name) <= 0 ? left : right;
+}
+
+function renameMaterialsProjectMaterial(material: Material, formula: string): Material {
+  const preferredName = FRIENDLY_NAMES[formula] ?? `${formula} (MP)`;
+  const preferredId =
+    material.material_id?.replace(/-/g, "_") ??
+    `mp_${formula.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+
+  return {
+    ...material,
+    id: preferredId,
+    name: preferredName,
+    formula_pretty: formula,
+    source_kind: "materials-project",
+    tags: Array.from(
+      new Set(
+        [
+          ...material.tags,
+          formula,
+          "materials-project",
+          material.material_id ? material.material_id.replace(/-/g, "_") : null
+        ].filter((entry): entry is string => Boolean(entry))
+      )
+    )
+  };
+}
+
+function dedupeMaterialsProjectMaterials(materials: Material[]): Material[] {
+  const groups = new Map<string, Material>();
+
+  for (const material of materials) {
+    if (!isMaterialsProjectMaterial(material)) {
+      continue;
+    }
+
+    const baseFormula = getBaseFormula(material);
+    if (!baseFormula) {
+      continue;
+    }
+
+    if (CURATED_DUPLICATE_FORMULAS.has(baseFormula)) {
+      continue;
+    }
+
+    const existing = groups.get(baseFormula);
+    groups.set(
+      baseFormula,
+      existing ? choosePreferredMpMaterial(existing, material) : material
+    );
+  }
+
+  return [...groups.entries()]
+    .map(([formula, material]) => renameMaterialsProjectMaterial(material, formula))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+const curatedWithMetadata = curatedMaterials.map((material) => ({
+  ...material,
+  source_kind: material.source_kind ?? ("curated" as const)
+}));
+
+const cleanedMpMaterials = dedupeMaterialsProjectMaterials(mpMaterialsGenerated);
+
+export const materialsDB: Material[] = [...curatedWithMetadata, ...cleanedMpMaterials];
 
 export default materialsDB;

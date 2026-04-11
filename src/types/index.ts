@@ -21,6 +21,12 @@ export interface Material {
   cost_usd_kg: number;
   tags: string[];
   data_source: string;
+  source_kind?: "curated" | "materials-project";
+  formula_pretty?: string;
+  material_id?: string;
+  energy_above_hull?: number | null;
+  band_gap_eV?: number | null;
+  is_stable?: boolean;
 }
 
 export interface UserConstraints {
@@ -58,4 +64,5 @@ export interface RecommendResponse {
   inferredConstraints: UserConstraints;
   clarifications: string;
   matchCount?: number;
+  ragRetrieved?: string[];
 }

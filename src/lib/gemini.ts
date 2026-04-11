@@ -34,8 +34,87 @@ function normaliseWeights(
   };
 }
 
+function generateLocalExplanation(
+  query: string,
+  ranked: RankedMaterial[]
+): string {
+  if (!ranked || ranked.length === 0) {
+    return (
+      "No materials matched your constraints. " +
+      "Try relaxing the filters or rephrasing your query."
+    );
+  }
+
+  const top = ranked[0];
+  const second = ranked[1];
+  const third = ranked[2];
+
+  const para1 =
+    `Based on your requirements, ${top.name} is the recommended material with a ` +
+    `match score of ${top.score}/100. ` +
+    `It offers a maximum service temperature of ${top.max_service_temp_c}°C, ` +
+    `tensile strength of ${top.tensile_strength_mpa} MPa, density of ` +
+    `${top.density_g_cm3} g/cm³, and costs approximately ` +
+    `$${top.cost_usd_kg}/kg. ` +
+    `Its corrosion resistance is rated ${top.corrosion_resistance} ` +
+    `and it falls in the ${top.subcategory} subcategory. ` +
+    (top.printability_fdm !== "n/a"
+      ? `FDM printability is ${top.printability_fdm}, ` +
+        `making it ${
+          top.printability_fdm === "excellent" || top.printability_fdm === "good"
+            ? "suitable"
+            : "challenging"
+        } for desktop 3D printing. `
+      : "It is not intended for FDM printing. ") +
+    `This material was sourced from: ${top.data_source}.`;
+
+  const para2 =
+    second && third
+      ? `Comparing the top three candidates: ${top.name} (score ${top.score}) leads on the ` +
+        `highest-weighted properties for this query. ${second.name} (score ${second.score}) is the ` +
+        `next best option — it offers ${second.max_service_temp_c}°C service temperature ` +
+        `and ${second.tensile_strength_mpa} MPa tensile strength at $${second.cost_usd_kg}/kg, ` +
+        `which may be preferred if ${
+          second.density_g_cm3 < top.density_g_cm3
+            ? "lower density is critical"
+            : second.cost_usd_kg < top.cost_usd_kg
+              ? "cost is the primary driver"
+              : "its specific property profile better suits your geometry"
+        }. ${third.name} (score ${third.score}) rounds out the shortlist at ` +
+        `$${third.cost_usd_kg}/kg with ${third.tensile_strength_mpa} MPa tensile strength — ` +
+        `consider it if ${
+          third.corrosion_resistance === "excellent" &&
+          top.corrosion_resistance !== "excellent"
+            ? "corrosion resistance is more critical than initially stated"
+            : third.cost_usd_kg < top.cost_usd_kg
+              ? "budget constraints tighten"
+              : "the application envelope changes"
+        }.`
+      : `Only ${top.name} strongly matched all stated constraints. ` +
+        "Consider relaxing cost or temperature limits to see more alternatives.";
+
+  const para3 =
+    "Key caveats before ordering: all property values are at room temperature (20–25°C) " +
+    "and may degrade at elevated service temperatures. Cost values are 2024 market approximations " +
+    "and vary by supplier, grade, and quantity. " +
+    (top.category === "Polymer"
+      ? `For polymer components, confirm the glass transition temperature (${top.glass_transition_c}°C) is not exceeded under continuous load, as creep and deformation can occur below the nominal service limit. `
+      : top.category === "Ceramic"
+        ? "Ceramics are brittle — verify fracture toughness and thermal shock resistance for your geometry before finalising this selection. "
+        : top.category === "Solder"
+          ? "Confirm reflow profile compatibility and check RoHS compliance requirements for your application. "
+          : "Verify the specific alloy grade and heat treatment condition matches your procurement specification. ") +
+    "Run a secondary check against the full property sheet visible below before placing an order.";
+
+  return [para1, para2, para3].join("\n\n");
+}
+
 export function heuristicExtract(query: string): UserConstraints {
   const q = query.toLowerCase();
+  const aggressiveBudget =
+    q.includes("cheapest") ||
+    q.includes("lowest cost") ||
+    q.includes("cheapest possible");
   const solderWords = [
     "solder",
     "bga",
@@ -166,11 +245,11 @@ export function heuristicExtract(query: string): UserConstraints {
       w.cost = 0.15;
       w.corrosion = 0.07;
     } else if (cost === maxSignal) {
-      w.cost = 0.45;
-      w.strength = 0.25;
-      w.thermal = 0.15;
-      w.weight = 0.1;
-      w.corrosion = 0.05;
+      w.cost = aggressiveBudget ? 0.8 : 0.65;
+      w.strength = aggressiveBudget ? 0.1 : 0.15;
+      w.thermal = 0.05;
+      w.weight = aggressiveBudget ? 0.03 : 0.1;
+      w.corrosion = aggressiveBudget ? 0.02 : 0.05;
     } else if (corr === maxSignal) {
       w.corrosion = 0.4;
       w.strength = 0.25;
@@ -178,6 +257,19 @@ export function heuristicExtract(query: string): UserConstraints {
       w.weight = 0.1;
       w.cost = 0.1;
     }
+  }
+
+  if (
+    q.includes("marine") ||
+    q.includes("seawater") ||
+    q.includes("salt water") ||
+    q.includes("ocean")
+  ) {
+    w.corrosion = 0.55;
+    w.strength = 0.2;
+    w.thermal = 0.1;
+    w.weight = 0.05;
+    w.cost = 0.1;
   }
 
   // Extract temperature number
@@ -237,6 +329,9 @@ export function heuristicExtract(query: string): UserConstraints {
     : undefined;
 
   let maxCost = Number.isFinite(parsedBudget) ? parsedBudget : undefined;
+  if (aggressiveBudget && !isSolderAssembly) {
+    maxCost = Math.min(maxCost ?? Infinity, 2);
+  }
 
   // Corrosion requirement
   const corrosionRequired: "excellent" | "good" | "fair" | undefined =
@@ -255,16 +350,19 @@ export function heuristicExtract(query: string): UserConstraints {
   const maxDensity = light > 0 ? 3.5 : undefined;
   let minTensileStrength: number | undefined;
 
-  // Reflow temperatures describe process temperature, not service temperature.
-  // Treat solder/electronics queries separately so a 220°C reflow target
-  // does not eliminate SAC305-like candidates during hard filtering.
+  // For solder/reflow queries, the explicit temperature describes the process
+  // envelope and is later compared against melting point rather than service
+  // temperature. Keep the number so SAC305-like solders can still be filtered
+  // against realistic reflow windows.
   const tempFromText = tempMatch ? parseInt(tempMatch[1], 10) : undefined;
-  let maxTemperature =
-    tempFromText !== undefined && !(isSolderAssembly && q.includes("reflow"))
-      ? tempFromText
-      : contextTemp;
+  let maxTemperature = tempFromText ?? contextTemp;
 
-  if (isSolderAssembly && q.includes("automotive") && maxTemperature === undefined) {
+  if (
+    isSolderAssembly &&
+    q.includes("automotive") &&
+    tempFromText === undefined &&
+    maxTemperature === undefined
+  ) {
     maxTemperature = 125;
   }
 
@@ -354,6 +452,14 @@ IMPORTANT: priorityWeights must sum to exactly 1.0.
 Infer weights from emphasis: "absolutely cannot warp" means
 thermal weight >= 0.35. "lightweight" means weight >= 0.35.
 "cheap" or "budget" means cost >= 0.40.
+CRITICAL WEIGHT RULES:
+- If the user says "cheapest", "lowest cost", or "cheapest possible",
+  set cost weight >= 0.60.
+- If the query is mainly about seawater or marine exposure,
+  set corrosion weight >= 0.40.
+- If the query is about 3D printing on a desktop printer,
+  prefer practical printable polymers instead of ultra-premium materials
+  unless the user explicitly asks for aerospace/high-temperature parts.
 
 User: ${query}`;
 
@@ -366,7 +472,13 @@ User: ${query}`;
       .trim();
     const parsed = JSON.parse(clean) as Partial<UserConstraints>;
     parsed.priorityWeights = normaliseWeights(
-      parsed.priorityWeights as UserConstraints["priorityWeights"]
+      (parsed.priorityWeights as UserConstraints["priorityWeights"]) ?? {
+        thermal: 0.15,
+        strength: 0.3,
+        weight: 0.15,
+        cost: 0.3,
+        corrosion: 0.1
+      }
     );
     return { ...parsed, rawQuery: query } as UserConstraints;
   } catch {
@@ -416,16 +528,8 @@ export async function generateExplanation(
     const res = await chat.sendMessage(prompt);
     return res.response.text();
   } catch {
-    const top = ranked[0];
-    if (!top) {
-      return "No materials matched your constraints.";
-    }
-    return (
-      `Based on your requirements, ${top.name} is the top recommendation with a score of ${top.score}/100. ` +
-      `It offers a maximum service temperature of ${top.max_service_temp_c}°C, tensile strength of ` +
-      `${top.tensile_strength_mpa} MPa, density of ${top.density_g_cm3} g/cm³, and costs approximately ` +
-      `$${top.cost_usd_kg}/kg. The AI explanation is unavailable (Gemini quota exceeded) but the deterministic scoring ` +
-      "above is fully reliable."
-    );
+    // If the remote model does not return, explain the shortlist locally
+    // using the ranked materials data we already have.
+    return generateLocalExplanation(query, ranked);
   }
 }

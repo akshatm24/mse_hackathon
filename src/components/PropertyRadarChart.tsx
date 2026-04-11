@@ -114,36 +114,63 @@ export default function PropertyRadarChart({
           Top 3 property profile
         </h3>
       </div>
-      <ResponsiveContainer width="100%" height={260}>
-        <RadarChart data={chartData}>
-          <PolarGrid stroke="#27272A" />
-          <PolarAngleAxis
-            dataKey="axis"
-            tick={{ fill: "#71717A", fontSize: 11 }}
-          />
-          <PolarRadiusAxis
-            angle={90}
-            domain={[0, 100]}
-            tick={{ fill: "#3F3F46", fontSize: 9 }}
-          />
-          {topThree.map((item, index) => (
-            <Radar
-              key={item.id}
-              name={item.name}
-              dataKey={item.name}
-              stroke={series[index].stroke}
-              fill={series[index].fill}
-              fillOpacity={1}
-              strokeWidth={1.5}
+      <div className="hidden sm:block">
+        <ResponsiveContainer width="100%" height={260}>
+          <RadarChart data={chartData}>
+            <PolarGrid stroke="#27272A" />
+            <PolarAngleAxis
+              dataKey="axis"
+              tick={{ fill: "#71717A", fontSize: 11 }}
             />
+            <PolarRadiusAxis
+              angle={90}
+              domain={[0, 100]}
+              tick={{ fill: "#3F3F46", fontSize: 9 }}
+            />
+            {topThree.map((item, index) => (
+              <Radar
+                key={item.id}
+                name={item.name}
+                dataKey={item.name}
+                stroke={series[index].stroke}
+                fill={series[index].fill}
+                fillOpacity={1}
+                strokeWidth={1.5}
+              />
+            ))}
+            <Legend
+              verticalAlign="bottom"
+              iconType="circle"
+              wrapperStyle={{ color: "#A1A1AA", fontSize: "11px", paddingTop: "12px" }}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="sm:hidden">
+        <div className="mt-2 space-y-2">
+          {topThree.map((item, index) => (
+            <div
+              key={item.id}
+              className="rounded-lg border border-surface-800 bg-surface-950 px-3 py-2"
+            >
+              <div className="flex items-center gap-2 text-[12px] font-medium text-zinc-100">
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ backgroundColor: series[index].stroke }}
+                />
+                {item.name}
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-surface-500">
+                <div>Strength: {item.tensile_strength_mpa} MPa</div>
+                <div>Thermal: {item.max_service_temp_c}°C</div>
+                <div>Density: {item.density_g_cm3.toFixed(2)} g/cm³</div>
+                <div>Cost: ${item.cost_usd_kg.toFixed(2)}/kg</div>
+              </div>
+            </div>
           ))}
-          <Legend
-            verticalAlign="bottom"
-            iconType="circle"
-            wrapperStyle={{ color: "#A1A1AA", fontSize: "11px", paddingTop: "12px" }}
-          />
-        </RadarChart>
-      </ResponsiveContainer>
+        </div>
+      </div>
     </section>
   );
 }

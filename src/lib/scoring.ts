@@ -26,6 +26,33 @@ function normLogCost(cost: number, allCosts: number[]): number {
   return norm(logVal, logMin, logMax);
 }
 
+function prefersExpandedMaterials(rawQuery: string): boolean {
+  const query = rawQuery.trim();
+  const lower = query.toLowerCase();
+
+  const formulaLike =
+    /[A-Z]/.test(query) &&
+    /\d/.test(query) &&
+    /\b(?:[A-Z][a-z]?\d*){2,}\b/.test(query);
+
+  return (
+    formulaLike ||
+    [
+      "materials project",
+      "perovskite",
+      "max phase",
+      "nitride",
+      "boride",
+      "carbide",
+      "silicide",
+      "semiconductor",
+      "oxide ceramic",
+      "formula lookup",
+      "novel alloy"
+    ].some((token) => lower.includes(token))
+  );
+}
+
 // Infer which material categories the query implies.
 // Category intent persists through ALL fallback passes.
 function inferCategoryIntent(rawQuery: string): {
@@ -106,6 +133,15 @@ function inferCategoryIntent(rawQuery: string): {
     "nylon part",
     "acrylic"
   ];
+  const lightweightStructures = ["drone", "airframe", "frame", "uav", "quadrotor"];
+
+  if (lightweightStructures.some((s) => q.includes(s))) {
+    return {
+      exclude: ["Ceramic", "Solder"],
+      includeOnly: ["Metal", "Composite"],
+      excludeIds: ["kevlar_epoxy"]
+    };
+  }
 
   if (
     (q.includes("marine") || q.includes("seawater") || q.includes("salt water")) &&
@@ -118,7 +154,17 @@ function inferCategoryIntent(rawQuery: string): {
       // Aerospace/high-temperature alloys are intentionally excluded unless
       // the query also asks for heat service because they otherwise dominate
       // on irrelevant thermal and strength extremes.
-      excludeIds: ["inconel718", "waspaloy", "ti6al4v", "tungsten", "molybdenum"]
+      excludeIds: [
+        "haynes230",
+        "inconel718",
+        "maraging300",
+        "molybdenum",
+        "rene41",
+        "ti_beta_21s",
+        "ti6al4v",
+        "tungsten",
+        "waspaloy"
+      ]
     };
   }
 
@@ -136,6 +182,8 @@ function inferCategoryIntent(rawQuery: string): {
             "ultem9085",
             "ultem1010",
             "pps",
+            "pa6",
+            "pa66",
             "delrin_pom",
             "polycarbonate"
           ]
@@ -143,12 +191,31 @@ function inferCategoryIntent(rawQuery: string): {
     };
   }
   if (solder.some((s) => q.includes(s))) {
-    const excludeIds =
-      q.includes("lead-free") || q.includes("rohs") ? ["sn63pb37"] : undefined;
+    const electronicsSolder =
+      q.includes("bga") ||
+      q.includes("reflow") ||
+      q.includes("electronics") ||
+      q.includes("pcb") ||
+      q.includes("smt");
+    const excludeIds = [
+      ...(q.includes("lead-free") || q.includes("rohs") ? ["sn63pb37"] : []),
+      ...(electronicsSolder ? ["auSn20", "bag7", "nickel_braze_bni2"] : [])
+    ];
     return {
       exclude: [],
       includeOnly: ["Solder"],
-      excludeIds
+      excludeIds: excludeIds.length > 0 ? excludeIds : undefined
+    };
+  }
+  if (
+    (q.includes("cheap") || q.includes("cheapest") || q.includes("budget")) &&
+    !fdm.some((s) => q.includes(s)) &&
+    !polymer.some((s) => q.includes(s)) &&
+    !solder.some((s) => q.includes(s))
+  ) {
+    return {
+      exclude: ["Ceramic", "Solder", "Composite"],
+      includeOnly: ["Metal"]
     };
   }
   if (polymer.some((s) => q.includes(s))) {
@@ -176,6 +243,12 @@ function hardFilter(
     ignoreCategory: boolean;
   }
 ): Material[] {
+  const q = (c.rawQuery ?? "").toLowerCase();
+  const isElectronicsSolderQuery =
+    q.includes("solder") ||
+    q.includes("bga") ||
+    q.includes("reflow") ||
+    q.includes("electronics");
   const reqRank = c.corrosionRequired ? CORROSION_RANK[c.corrosionRequired] : 0;
   const costCap = opts.relaxCost
     ? (c.maxCost_usd_kg ?? Infinity) * 3
@@ -198,6 +271,7 @@ function hardFilter(
     // Numeric hard constraints
     if (!opts.relaxNumeric) {
       if (
+        !isElectronicsSolderQuery &&
         c.maxTemperature_c !== undefined &&
         m.max_service_temp_c < c.maxTemperature_c
       ) {
@@ -216,6 +290,18 @@ function hardFilter(
 
     // Cost — relaxed separately
     if (m.cost_usd_kg > costCap) {
+      return false;
+    }
+
+    if (
+      (q.includes("solder") ||
+        q.includes("bga") ||
+        q.includes("reflow") ||
+        q.includes("electronics")) &&
+      c.maxTemperature_c !== undefined &&
+      m.melting_point_c !== null &&
+      m.melting_point_c > c.maxTemperature_c + 25
+    ) {
       return false;
     }
 
@@ -259,6 +345,10 @@ export function scoreMaterials(
   db: Material[]
 ): RankedMaterial[] {
   const intent = inferCategoryIntent(constraints.rawQuery ?? "");
+  const practicalDb = prefersExpandedMaterials(constraints.rawQuery ?? "")
+    ? db
+    : db.filter((material) => material.source_kind !== "materials-project");
+  const searchDb = practicalDb.length > 0 ? practicalDb : db;
 
   // Progressive fallback — category intent persists passes 1-3
   const passes = [
@@ -270,13 +360,13 @@ export function scoreMaterials(
 
   let filtered: Material[] = [];
   for (const opts of passes) {
-    filtered = hardFilter(db, constraints, intent, opts);
+    filtered = hardFilter(searchDb, constraints, intent, opts);
     if (filtered.length >= 3) {
       break;
     }
   }
   if (filtered.length === 0) {
-    filtered = [...db];
+    filtered = [...searchDb];
   }
 
   // Compute ranges ONLY within filtered set

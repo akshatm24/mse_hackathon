@@ -75,6 +75,9 @@ export default function Header() {
           <a href="#database" className="transition-colors hover:text-zinc-100">
             Database
           </a>
+          <a href="#predictor" className="transition-colors hover:text-zinc-100">
+            Predictor
+          </a>
           <a
             href="https://github.com/akshatm24/mse_hackathon"
             target="_blank"

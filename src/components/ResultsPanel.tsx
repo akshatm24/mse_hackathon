@@ -23,10 +23,12 @@ export default function ResultsPanel({
   const [showAll, setShowAll] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [view, setView] = useState<"grid" | "table">("grid");
+  const [showRagContext, setShowRagContext] = useState(false);
 
   useEffect(() => {
     setShowAll(false);
     setSelectedIds([]);
+    setShowRagContext(false);
   }, [data]);
 
   const visibleMaterials = showAll ? data.rankedMaterials : data.rankedMaterials.slice(0, 5);
@@ -68,6 +70,45 @@ export default function ResultsPanel({
           ))}
         </div>
       </div>
+
+      {data.ragRetrieved && data.ragRetrieved.length > 0 ? (
+        <div className="mx-auto max-w-[780px] rounded-xl border border-surface-800 bg-surface-900 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setShowRagContext((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-zinc-100">RAG Context Used</span>
+              <span
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-surface-700 text-[10px] text-surface-500"
+                title="RAG (Retrieval Augmented Generation) retrieves the most semantically relevant materials from the scored candidates and passes them to Gemini, producing more focused and accurate explanations than sending all results at once."
+              >
+                i
+              </span>
+            </div>
+            <span className="text-[11px] text-surface-500">
+              {showRagContext ? "Hide" : "Show"}
+            </span>
+          </button>
+          <p className="mt-2 text-[11px] text-surface-500">
+            Gemini analysed these {data.ragRetrieved.length} materials to generate the
+            explanation above.
+          </p>
+          {showRagContext ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {data.ragRetrieved.map((name) => (
+                <span
+                  key={name}
+                  className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] text-brand"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mx-auto flex max-w-[1200px] items-end justify-between gap-4 px-4">
         <div>

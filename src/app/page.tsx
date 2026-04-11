@@ -5,6 +5,7 @@ import { startTransition, useEffect, useRef, useState } from "react";
 
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Header from "@/components/Header";
+import NovelAlloyPredictor from "@/components/NovelAlloyPredictor";
 import QueryForm from "@/components/QueryForm";
 import ResultsPanel from "@/components/ResultsPanel";
 import materialsDB from "@/lib/materials-db";
@@ -107,7 +108,7 @@ export default function HomePage() {
 
       if (response.status === 503) {
         setApiAvailable(false);
-        throw new Error("The recommendation API is unavailable.");
+        throw new Error("The recommendation service did not respond.");
       }
 
       const data = (await response.json()) as RecommendResponse & { error?: string };
@@ -265,6 +266,10 @@ export default function HomePage() {
 
         <section id="database" className="mx-auto mt-12 max-w-6xl px-4">
           <DatabaseExplorer />
+        </section>
+
+        <section className="mx-auto mt-12 max-w-6xl px-4">
+          <NovelAlloyPredictor />
         </section>
 
         <footer className="mt-16 border-t border-surface-900 px-4 py-6">
