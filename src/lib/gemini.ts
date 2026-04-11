@@ -3,6 +3,119 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { RankedMaterial, UserConstraints } from "@/types";
 import { normalisePriorityWeights } from "@/lib/weights";
 
+const SIGNALS = {
+  cost: [
+    "cheap",
+    "cheapest",
+    "budget",
+    "affordable",
+    "low cost",
+    "inexpensive",
+    "low price",
+    "economical",
+    "under $",
+    "price",
+    "cost effective",
+    "least expensive",
+    "least cost",
+    "lowest cost",
+    "lowest price",
+    "minimum cost",
+    "minimum price",
+    "save money",
+    "low budget",
+    "frugal",
+    "economy",
+    "bargain",
+    "value",
+    "price point"
+  ],
+  thermal: [
+    "heat",
+    "hot",
+    "temperature",
+    "temp",
+    "warp",
+    "melt",
+    "thermal",
+    "motor",
+    "engine",
+    "furnace",
+    "oven",
+    "°c",
+    "celsius",
+    "degrees",
+    "fire",
+    "high temp",
+    "heat resistant",
+    "reflow",
+    "autoclave",
+    "service temp",
+    "thermal cycling",
+    "high temperature"
+  ],
+  weight: [
+    "light",
+    "lightweight",
+    "low weight",
+    "low density",
+    "light weight",
+    "drone",
+    "aircraft",
+    "aerospace",
+    "portable",
+    "wearable",
+    "rocket",
+    "satellite",
+    "weight saving",
+    "mass reduction",
+    "grams",
+    "low mass"
+  ],
+  strength: [
+    "strong",
+    "strength",
+    "load",
+    "stress",
+    "force",
+    "structural",
+    "bearing",
+    "high strength",
+    "tensile",
+    "yield",
+    "mpa",
+    "gpa",
+    "stiff",
+    "rigid",
+    "tough",
+    "load bearing",
+    "support",
+    "withstand",
+    "durable",
+    "robust",
+    "bracket"
+  ],
+  corrosion: [
+    "corros",
+    "rust",
+    "marine",
+    "seawater",
+    "acid",
+    "chemical",
+    "ocean",
+    "salt",
+    "oxidat",
+    "outdoor",
+    "weather",
+    "wet",
+    "moisture",
+    "humid",
+    "saltwater"
+  ]
+} as const;
+
+type Axis = keyof typeof SIGNALS;
+
 function getClient() {
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
@@ -11,118 +124,71 @@ function getClient() {
   return new GoogleGenerativeAI(key);
 }
 
+function countSignalHits(query: string) {
+  const q = query.toLowerCase();
+
+  return {
+    cost: SIGNALS.cost.filter((signal) => q.includes(signal)).length,
+    thermal: SIGNALS.thermal.filter((signal) => q.includes(signal)).length,
+    weight: SIGNALS.weight.filter((signal) => q.includes(signal)).length,
+    strength: SIGNALS.strength.filter((signal) => q.includes(signal)).length,
+    corrosion: SIGNALS.corrosion.filter((signal) => q.includes(signal)).length
+  };
+}
+
+function hasAnySignal(query: string, axis: Axis) {
+  const q = query.toLowerCase();
+  return SIGNALS[axis].some((signal) => q.includes(signal));
+}
+
+function repairPriorityWeights(
+  query: string,
+  parsedWeights: Partial<UserConstraints["priorityWeights"]> | undefined,
+  fallbackWeights: UserConstraints["priorityWeights"]
+): UserConstraints["priorityWeights"] {
+  const normalised = normalisePriorityWeights(parsedWeights);
+  const hits = countSignalHits(query);
+  const entries = Object.entries(hits).sort((left, right) => right[1] - left[1]) as [
+    Axis,
+    number
+  ][];
+  const [topAxis, topCount] = entries[0];
+  const [secondAxis, secondCount] = entries[1];
+
+  if (topCount === 0) {
+    return normalised;
+  }
+
+  const strongMinimums: Record<Axis, number> = {
+    cost: 0.6,
+    thermal: 0.6,
+    weight: 0.6,
+    strength: 0.6,
+    corrosion: 0.6
+  };
+
+  if (entries.some(([axis, count]) => count > 0 && normalised[axis] >= strongMinimums[axis])) {
+    return normalised;
+  }
+
+  if (topCount >= 1 && secondCount >= 1 && secondCount >= topCount * 0.5) {
+    if (normalised[topAxis] < 0.45 || normalised[secondAxis] < 0.25) {
+      return fallbackWeights;
+    }
+    return normalised;
+  }
+
+  if (normalised[topAxis] < strongMinimums[topAxis]) {
+    return fallbackWeights;
+  }
+
+  return normalised;
+}
+
 export function heuristicExtract(query: string): UserConstraints {
   const q = query.toLowerCase();
 
-  const hits = {
-    cost: [
-      "cheap",
-      "cheapest",
-      "budget",
-      "affordable",
-      "low cost",
-      "inexpensive",
-      "low price",
-      "economical",
-      "under $",
-      "price",
-      "cost effective",
-      "least expensive",
-      "minimum cost",
-      "save money",
-      "low budget",
-      "frugal",
-      "economy",
-      "bargain",
-      "value",
-      "price point"
-    ].filter((signal) => q.includes(signal)).length,
-
-    thermal: [
-      "heat",
-      "hot",
-      "temperature",
-      "temp",
-      "warp",
-      "melt",
-      "thermal",
-      "motor",
-      "engine",
-      "furnace",
-      "oven",
-      "°c",
-      "celsius",
-      "degrees",
-      "fire",
-      "high temp",
-      "heat resistant",
-      "reflow",
-      "autoclave",
-      "service temp",
-      "thermal cycling",
-      "high temperature"
-    ].filter((signal) => q.includes(signal)).length,
-
-    weight: [
-      "light",
-      "lightweight",
-      "low weight",
-      "low density",
-      "light weight",
-      "drone",
-      "aircraft",
-      "aerospace",
-      "portable",
-      "wearable",
-      "rocket",
-      "satellite",
-      "weight saving",
-      "mass reduction",
-      "grams",
-      "low mass"
-    ].filter((signal) => q.includes(signal)).length,
-
-    strength: [
-      "strong",
-      "strength",
-      "load",
-      "stress",
-      "force",
-      "structural",
-      "bearing",
-      "high strength",
-      "tensile",
-      "yield",
-      "mpa",
-      "gpa",
-      "stiff",
-      "rigid",
-      "tough",
-      "load bearing",
-      "support",
-      "withstand",
-      "durable",
-      "robust"
-    ].filter((signal) => q.includes(signal)).length,
-
-    corrosion: [
-      "corros",
-      "rust",
-      "marine",
-      "seawater",
-      "acid",
-      "chemical",
-      "ocean",
-      "salt",
-      "oxidat",
-      "outdoor",
-      "weather",
-      "wet",
-      "moisture",
-      "humid",
-      "saltwater"
-    ].filter((signal) => q.includes(signal)).length
-  };
+  const hits = countSignalHits(query);
 
   const sorted = Object.entries(hits).sort((left, right) => right[1] - left[1]);
   const [topAxis, topCount] = sorted[0];
@@ -275,7 +341,11 @@ export async function extractConstraints(
   try {
     const genAI = getClient();
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash"
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: "application/json"
+      }
     });
     const prompt = `You are a materials science expert.
 Read the user's engineering query carefully.
@@ -284,7 +354,8 @@ no backticks, no text before or after the JSON object.
 
 CRITICAL WEIGHT RULES — violating these makes the app useless:
 - If user says "cheap", "budget", "affordable", "low cost",
-  "inexpensive", "cheapest" → cost weight MUST be >= 0.60
+  "inexpensive", "cheapest", "least cost", "lowest cost",
+  "minimum cost", "lowest price" → cost weight MUST be >= 0.60
 - If user says "lightweight", "low density", "drone", "aircraft"
   → weight weight MUST be >= 0.60
 - If user says "strong", "high strength", "structural", "load"
@@ -336,9 +407,11 @@ User query: ${query}`;
     return {
       ...fallback,
       ...parsed,
-      priorityWeights: parsed.priorityWeights
-        ? normalisePriorityWeights(parsed.priorityWeights)
-        : fallback.priorityWeights,
+      priorityWeights: repairPriorityWeights(
+        query,
+        parsed.priorityWeights,
+        fallback.priorityWeights
+      ),
       rawQuery: query
     };
   } catch {
