@@ -72,9 +72,6 @@ export default function Header() {
           <a href="#query" className="transition-colors hover:text-zinc-100">
             How It Works
           </a>
-          <a href="#predictor" className="transition-colors hover:text-zinc-100">
-            Novel Alloy
-          </a>
           <a href="#database" className="transition-colors hover:text-zinc-100">
             Database
           </a>

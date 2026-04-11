@@ -36,11 +36,8 @@ export interface UserConstraints {
   maxCost_usd_kg?: number;
   corrosionRequired?: "excellent" | "good" | "fair";
   electricallyConductive?: boolean;
-  electricallyInsulating?: boolean;
   thermallyConductive?: boolean;
   needsFDMPrintability?: boolean;
-  preferredCategories?: Material["category"][];
-  semanticTags?: string[];
   priorityWeights: {
     strength: number;
     thermal: number;
@@ -68,36 +65,4 @@ export interface RecommendResponse {
   clarifications: string;
   matchCount?: number;
   ragRetrieved?: string[];
-}
-
-export interface CompositionFraction {
-  element: string;
-  fraction: number;
-}
-
-export interface PredictedAnalog {
-  name: string;
-  formula: string;
-  category: Material["category"];
-  similarity: number;
-  source: string;
-}
-
-export interface NovelMaterialPrediction {
-  inputComposition: string;
-  normalizedFormula: string;
-  parsedComposition: CompositionFraction[];
-  predictedCategory: Material["category"];
-  confidence: number;
-  predictedProperties: {
-    density_g_cm3: number;
-    tensile_strength_mpa: number;
-    elastic_modulus_gpa: number;
-    thermal_conductivity_w_mk: number;
-    max_service_temp_c: number;
-    electrical_resistivity_ohm_m: number;
-    corrosion_resistance: Material["corrosion_resistance"];
-  };
-  nearestAnalogs: PredictedAnalog[];
-  explanation: string;
 }
