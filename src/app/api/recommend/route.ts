@@ -2,13 +2,48 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { generateExplanation, extractConstraints } from "@/lib/gemini";
 import materialsDB from "@/lib/materials-db";
-import {
-  filterMaterialsForConstraints,
-  mergeConstraints,
-  normalisePriorityWeights,
-  scoreMaterials
-} from "@/lib/scoring";
+import { scoreMaterials } from "@/lib/scoring";
 import { UserConstraints } from "@/types";
+
+function normaliseWeights(
+  weights?: Partial<UserConstraints["priorityWeights"]>
+): UserConstraints["priorityWeights"] | undefined {
+  if (!weights) {
+    return undefined;
+  }
+
+  const merged = {
+    thermal: weights.thermal ?? 0,
+    strength: weights.strength ?? 0,
+    weight: weights.weight ?? 0,
+    cost: weights.cost ?? 0,
+    corrosion: weights.corrosion ?? 0
+  };
+  const total =
+    merged.thermal +
+    merged.strength +
+    merged.weight +
+    merged.cost +
+    merged.corrosion;
+
+  if (total <= 0) {
+    return {
+      thermal: 0.15,
+      strength: 0.3,
+      weight: 0.15,
+      cost: 0.3,
+      corrosion: 0.1
+    };
+  }
+
+  return {
+    thermal: merged.thermal / total,
+    strength: merged.strength / total,
+    weight: merged.weight / total,
+    cost: merged.cost / total,
+    corrosion: merged.corrosion / total
+  };
+}
 
 function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | undefined {
   if (!value || typeof value !== "object") {
@@ -46,7 +81,33 @@ function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | u
       typeof manual.needsFDMPrintability === "boolean"
         ? manual.needsFDMPrintability
         : undefined,
-    priorityWeights: normalisePriorityWeights(manual.priorityWeights)
+    priorityWeights: normaliseWeights(manual.priorityWeights)
+  };
+}
+
+function mergeConstraints(
+  base: UserConstraints,
+  overrides?: Partial<UserConstraints>
+): UserConstraints {
+  if (!overrides) {
+    return base;
+  }
+
+  return {
+    maxTemperature_c: overrides.maxTemperature_c ?? base.maxTemperature_c,
+    minTensileStrength_mpa:
+      overrides.minTensileStrength_mpa ?? base.minTensileStrength_mpa,
+    maxDensity_g_cm3: overrides.maxDensity_g_cm3 ?? base.maxDensity_g_cm3,
+    maxCost_usd_kg: overrides.maxCost_usd_kg ?? base.maxCost_usd_kg,
+    corrosionRequired: overrides.corrosionRequired ?? base.corrosionRequired,
+    electricallyConductive:
+      overrides.electricallyConductive ?? base.electricallyConductive,
+    thermallyConductive:
+      overrides.thermallyConductive ?? base.thermallyConductive,
+    needsFDMPrintability:
+      overrides.needsFDMPrintability ?? base.needsFDMPrintability,
+    priorityWeights: overrides.priorityWeights ?? base.priorityWeights,
+    rawQuery: overrides.rawQuery ?? base.rawQuery
   };
 }
 
@@ -74,7 +135,6 @@ async function buildRecommendationResponse({
     constraints,
     manualConstraints ? { ...manualConstraints, rawQuery: query } : undefined
   );
-  const allMatches = filterMaterialsForConstraints(mergedConstraints, materialsDB);
   const rankedMaterials = scoreMaterials(mergedConstraints, materialsDB);
   let llmExplanation = "";
 
@@ -91,7 +151,7 @@ async function buildRecommendationResponse({
     clarifications: process.env.GEMINI_API_KEY
       ? "Constraints inferred from your description."
       : "Gemini key not configured, so local heuristics were used to infer constraints.",
-    matchCount: allMatches.length
+    matchCount: rankedMaterials.length
   };
 }
 

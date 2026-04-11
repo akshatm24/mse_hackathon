@@ -8,66 +8,7 @@ import Header from "@/components/Header";
 import QueryForm from "@/components/QueryForm";
 import ResultsPanel from "@/components/ResultsPanel";
 import materialsDB from "@/lib/materials-db";
-import {
-  mergeConstraints,
-  normalisePriorityWeights,
-  scoreMaterials
-} from "@/lib/scoring";
 import type { RecommendResponse, UserConstraints } from "@/types";
-
-function inferConstraintsLocally(query: string): UserConstraints {
-  const q = query.toLowerCase();
-  const weights = {
-    strength: 0.2,
-    thermal: 0.2,
-    weight: 0.2,
-    cost: 0.2,
-    corrosion: 0.2
-  };
-
-  if (
-    q.includes("heat") ||
-    q.includes("temp") ||
-    q.includes("motor") ||
-    q.includes("hot")
-  ) {
-    weights.thermal = 0.35;
-  }
-  if (q.includes("light") || q.includes("lightweight") || q.includes("density")) {
-    weights.weight = 0.35;
-  }
-  if (q.includes("strength") || q.includes("load") || q.includes("bracket")) {
-    weights.strength = 0.35;
-  }
-  if (q.includes("cost") || q.includes("budget") || q.includes("cheap")) {
-    weights.cost = 0.35;
-  }
-  if (q.includes("corrosion") || q.includes("marine") || q.includes("rust")) {
-    weights.corrosion = 0.35;
-  }
-
-  const tempMatch = q.match(/(\d{2,4})\s*°?\s*c/);
-
-  return {
-    rawQuery: query,
-    maxTemperature_c: tempMatch ? parseInt(tempMatch[1], 10) : undefined,
-    needsFDMPrintability:
-      q.includes("3d print") || q.includes("fdm") || q.includes("desktop printer")
-        ? true
-        : undefined,
-    priorityWeights: normalisePriorityWeights(weights)
-  };
-}
-
-function buildLocalExplanation(query: string, response: RecommendResponse) {
-  const top = response.rankedMaterials[0];
-  return (
-    `Offline mode is active, so the app used local constraint extraction and deterministic scoring for "${query}". ` +
-    `${top?.name ?? "The top candidate"} ranks highest with ${top?.max_service_temp_c}°C service temperature, ` +
-    `${top?.tensile_strength_mpa} MPa tensile strength, ${top?.density_g_cm3} g/cm³ density, and a cost near $${top?.cost_usd_kg}/kg. ` +
-    "Use the comparison view to inspect trade-offs before final selection."
-  );
-}
 
 function buildLoadingSteps(query: string, manualConstraints?: Partial<UserConstraints>) {
   const steps = ["Extracting constraints..."];
@@ -97,7 +38,7 @@ function buildLoadingSteps(query: string, manualConstraints?: Partial<UserConstr
     steps.push(`✓ Priority: ${priority}`);
   }
 
-  steps.push("Scoring 42 materials...");
+  steps.push(`Scoring ${materialsDB.length} materials...`);
   steps.push("Ranking top candidates...");
   return steps;
 }
@@ -115,6 +56,7 @@ export default function HomePage() {
   const [visibleLoadingStep, setVisibleLoadingStep] = useState(1);
   const [summaryBarVisible, setSummaryBarVisible] = useState(false);
   const querySectionRef = useRef<HTMLElement | null>(null);
+  const materialCount = materialsDB.length;
 
   useEffect(() => {
     if (!loading) {
@@ -165,23 +107,7 @@ export default function HomePage() {
 
       if (response.status === 503) {
         setApiAvailable(false);
-        const localConstraints = mergeConstraints(
-          inferConstraintsLocally(query),
-          manual ? { ...manual, rawQuery: query } : undefined
-        );
-        const rankedMaterials = scoreMaterials(localConstraints, materialsDB);
-        const localResults: RecommendResponse = {
-          rankedMaterials,
-          llmExplanation: "",
-          inferredConstraints: localConstraints,
-          clarifications: "Running in graceful offline mode.",
-          matchCount: rankedMaterials.length
-        };
-
-        localResults.llmExplanation = buildLocalExplanation(query, localResults);
-        startTransition(() => setResults(localResults));
-        setSearchDurationMs(performance.now() - started);
-        return;
+        throw new Error("The recommendation API is unavailable.");
       }
 
       const data = (await response.json()) as RecommendResponse & { error?: string };
@@ -236,13 +162,13 @@ export default function HomePage() {
             </h1>
             <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.7] text-zinc-500">
               Describe your engineering challenge in plain English. The AI extracts
-              constraints and ranks 42+ materials from ASM Handbook and MatWeb in
+              constraints and ranks {materialCount}+ materials from ASM Handbook and MatWeb in
               under 3 seconds.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
               {[
-                ["42", "Materials"],
+                [String(materialCount), "Materials"],
                 ["5", "Categories"],
                 ["18", "Properties"]
               ].map(([value, label], index) => (
@@ -273,7 +199,7 @@ export default function HomePage() {
                 className="mr-2 inline-block h-2 w-2 rounded-full bg-brand"
                 style={{ animation: "pulse 2s ease-in-out infinite" }}
               />
-              Analysing constraints and searching 42 materials...
+              Analysing constraints and searching {materialCount} materials...
             </div>
             <div className="mx-auto mb-6 max-w-[780px] rounded-xl border border-surface-800 bg-surface-900 px-4 py-3">
               <div className="space-y-1.5 text-left text-[12px] text-surface-400">
@@ -347,7 +273,7 @@ export default function HomePage() {
               Smart Alloy Selector · MET-QUEST&apos;26
             </div>
             <div className="text-[10px] text-surface-700">
-              42 materials · ASM Handbook · MatWeb · NASA TPSX
+              {materialCount} materials · ASM Handbook · MatWeb · NASA TPSX
             </div>
             <div className="flex items-center gap-3 text-[10px] text-surface-700">
               <span>Built with Next.js + Gemini</span>

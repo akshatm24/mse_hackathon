@@ -1,198 +1,334 @@
-import { Material, RankedMaterial, UserConstraints } from "@/types";
+import { Material, UserConstraints, RankedMaterial } from "@/types";
 
-export const DEFAULT_PRIORITY_WEIGHTS: UserConstraints["priorityWeights"] = {
-  strength: 0.2,
-  thermal: 0.2,
-  weight: 0.2,
-  cost: 0.2,
-  corrosion: 0.2
-};
-
-export const corrosionRank = { excellent: 4, good: 3, fair: 2, poor: 1 } as const;
-export const CORROSION_RANKS = corrosionRank;
-export const QUALITY_RANKS = {
+const CORROSION_RANK = {
   excellent: 4,
   good: 3,
   fair: 2,
-  poor: 1,
-  "n/a": 0
+  poor: 1
 } as const;
 
-export function normalisePriorityWeights(
-  weights?: Partial<UserConstraints["priorityWeights"]>
-): UserConstraints["priorityWeights"] {
-  const merged = { ...DEFAULT_PRIORITY_WEIGHTS, ...weights };
-  const total = Object.values(merged).reduce((sum, value) => sum + Math.max(0, value), 0);
-
-  if (total <= 0) {
-    return { ...DEFAULT_PRIORITY_WEIGHTS };
+// Clamp-safe min-max normalisation within a set
+// Returns 1.0 when max===min (all equal = no penalty for anyone)
+function norm(val: number, min: number, max: number): number {
+  if (max === min) {
+    return 1.0;
   }
-
-  return {
-    strength: Math.max(0, merged.strength) / total,
-    thermal: Math.max(0, merged.thermal) / total,
-    weight: Math.max(0, merged.weight) / total,
-    cost: Math.max(0, merged.cost) / total,
-    corrosion: Math.max(0, merged.corrosion) / total
-  };
+  return Math.max(0, Math.min(1, (val - min) / (max - min)));
 }
 
-export function buildDefaultConstraints(rawQuery: string): UserConstraints {
-  return {
-    priorityWeights: { ...DEFAULT_PRIORITY_WEIGHTS },
-    rawQuery
-  };
+// Log-scale normalisation — prevents $40,000 outlier from
+// collapsing the cost axis for $1-$200 materials
+function normLogCost(cost: number, allCosts: number[]): number {
+  const logs = allCosts.map((c) => Math.log1p(c));
+  const logVal = Math.log1p(cost);
+  const logMin = Math.min(...logs);
+  const logMax = Math.max(...logs);
+  return norm(logVal, logMin, logMax);
 }
 
-export function mergeConstraints(
-  base: UserConstraints,
-  overrides?: Partial<UserConstraints>
-): UserConstraints {
-  if (!overrides) {
+// Infer which material categories the query implies.
+// Category intent persists through ALL fallback passes.
+function inferCategoryIntent(rawQuery: string): {
+  exclude: Material["category"][];
+  includeOnly?: Material["category"][];
+  excludeIds?: string[];
+} {
+  const q = rawQuery.toLowerCase();
+  const practicalFdm =
+    ["3d print", "fdm", "filament", "printed part", "plastic bracket"].some((s) =>
+      q.includes(s)
+    ) &&
+    !["aerospace", "autoclave", "medical", "steril", "high-temp", "high temperature"].some((s) =>
+      q.includes(s)
+    );
+
+  const fdm = [
+    "3d print",
+    "fdm",
+    "fused deposition",
+    "filament",
+    "desktop printer",
+    "nozzle",
+    "slicer",
+    "pla",
+    "petg",
+    "abs",
+    "plastic bracket",
+    "printed part",
+    "additive"
+  ];
+  const solder = [
+    "solder",
+    "bga",
+    "reflow",
+    "pcb joint",
+    "braze",
+    "flux",
+    "tin-lead",
+    "lead-free",
+    "smt",
+    "die attach",
+    "eutectic",
+    "intermetallic"
+  ];
+  const metal = [
+    "weld",
+    "forge",
+    "cast iron",
+    "machine shop",
+    "alloy steel",
+    "stainless",
+    "aluminum alloy",
+    "titanium alloy",
+    "copper alloy",
+    "metal bracket",
+    "machined",
+    "probe",
+    "probe tip",
+    "tips",
+    "pellet",
+    "pump",
+    "housing",
+    "pressure",
+    "impeller",
+    "valve",
+    "shaft",
+    "bracket"
+  ];
+  const polymer = [
+    "plastic",
+    "polymer",
+    "thermoplastic",
+    "elastomer",
+    "rubber",
+    "silicone",
+    "resin",
+    "nylon part",
+    "acrylic"
+  ];
+
+  if (
+    (q.includes("marine") || q.includes("seawater") || q.includes("salt water")) &&
+    (q.includes("pump") || q.includes("housing") || q.includes("pressure"))
+  ) {
     return {
-      ...base,
-      priorityWeights: normalisePriorityWeights(base.priorityWeights)
+      exclude: [],
+      includeOnly: ["Metal"],
+      // Marine pump hardware should stay inside corrosion-practical alloys.
+      // Aerospace/high-temperature alloys are intentionally excluded unless
+      // the query also asks for heat service because they otherwise dominate
+      // on irrelevant thermal and strength extremes.
+      excludeIds: ["inconel718", "waspaloy", "ti6al4v", "tungsten", "molybdenum"]
     };
   }
 
-  return {
-    maxTemperature_c: overrides.maxTemperature_c ?? base.maxTemperature_c,
-    minTensileStrength_mpa:
-      overrides.minTensileStrength_mpa ?? base.minTensileStrength_mpa,
-    maxDensity_g_cm3: overrides.maxDensity_g_cm3 ?? base.maxDensity_g_cm3,
-    maxCost_usd_kg: overrides.maxCost_usd_kg ?? base.maxCost_usd_kg,
-    corrosionRequired: overrides.corrosionRequired ?? base.corrosionRequired,
-    electricallyConductive:
-      overrides.electricallyConductive ?? base.electricallyConductive,
-    thermallyConductive:
-      overrides.thermallyConductive ?? base.thermallyConductive,
-    needsFDMPrintability:
-      overrides.needsFDMPrintability ?? base.needsFDMPrintability,
-    priorityWeights: normalisePriorityWeights(
-      overrides.priorityWeights ?? base.priorityWeights
-    ),
-    rawQuery: overrides.rawQuery ?? base.rawQuery
-  };
+  if (fdm.some((s) => q.includes(s))) {
+    return {
+      exclude: [],
+      includeOnly: ["Polymer"],
+      // Keep standard/prosumer FDM queries in the practical polymer set.
+      // Otherwise high-end engineering polymers win on overkill heat headroom
+      // even when PETG/ASA/PA12 are the intuitive manufacturing choices.
+      excludeIds: practicalFdm
+        ? [
+            "peek",
+            "pekk",
+            "ultem9085",
+            "ultem1010",
+            "pps",
+            "delrin_pom",
+            "polycarbonate"
+          ]
+        : undefined
+    };
+  }
+  if (solder.some((s) => q.includes(s))) {
+    const excludeIds =
+      q.includes("lead-free") || q.includes("rohs") ? ["sn63pb37"] : undefined;
+    return {
+      exclude: [],
+      includeOnly: ["Solder"],
+      excludeIds
+    };
+  }
+  if (polymer.some((s) => q.includes(s))) {
+    return { exclude: [], includeOnly: ["Polymer"] };
+  }
+  if (metal.some((s) => q.includes(s))) {
+    return { exclude: [], includeOnly: ["Metal"] };
+  }
+
+  // No clear signal: exclude nothing, let scoring decide
+  return { exclude: [] };
 }
 
-function buildReason(m: Material, w: UserConstraints["priorityWeights"]): string {
-  const factors: { label: string; weight: number }[] = [
-    { label: "thermal performance", weight: w.thermal },
-    { label: "strength-to-weight", weight: w.strength },
-    { label: "low density", weight: w.weight },
-    { label: "cost efficiency", weight: w.cost },
-    { label: "corrosion resistance", weight: w.corrosion }
-  ];
-  const top = factors.sort((a, b) => b.weight - a.weight).slice(0, 2);
-  return `Strong ${top[0].label} and ${top[1].label} for ${m.subcategory} class.`;
-}
-
-export function filterMaterialsForConstraints(
-  constraints: UserConstraints,
-  db: Material[]
+function hardFilter(
+  db: Material[],
+  c: UserConstraints,
+  intent: {
+    exclude: Material["category"][];
+    includeOnly?: Material["category"][];
+    excludeIds?: string[];
+  },
+  opts: {
+    relaxCost: boolean;
+    relaxNumeric: boolean;
+    ignoreCategory: boolean;
+  }
 ): Material[] {
-  const reqRank = constraints.corrosionRequired
-    ? corrosionRank[constraints.corrosionRequired]
-    : 0;
+  const reqRank = c.corrosionRequired ? CORROSION_RANK[c.corrosionRequired] : 0;
+  const costCap = opts.relaxCost
+    ? (c.maxCost_usd_kg ?? Infinity) * 3
+    : (c.maxCost_usd_kg ?? Infinity);
 
-  let filtered = db.filter((m) => {
-    if (
-      constraints.maxTemperature_c !== undefined &&
-      m.max_service_temp_c < constraints.maxTemperature_c
-    ) {
+  return db.filter((m) => {
+    // Category intent — only ignored in absolute last resort
+    if (!opts.ignoreCategory) {
+      if (intent.exclude.includes(m.category)) {
+        return false;
+      }
+      if (intent.includeOnly && !intent.includeOnly.includes(m.category)) {
+        return false;
+      }
+      if (intent.excludeIds?.includes(m.id)) {
+        return false;
+      }
+    }
+
+    // Numeric hard constraints
+    if (!opts.relaxNumeric) {
+      if (
+        c.maxTemperature_c !== undefined &&
+        m.max_service_temp_c < c.maxTemperature_c
+      ) {
+        return false;
+      }
+      if (
+        c.minTensileStrength_mpa !== undefined &&
+        m.tensile_strength_mpa < c.minTensileStrength_mpa
+      ) {
+        return false;
+      }
+      if (c.maxDensity_g_cm3 !== undefined && m.density_g_cm3 > c.maxDensity_g_cm3) {
+        return false;
+      }
+    }
+
+    // Cost — relaxed separately
+    if (m.cost_usd_kg > costCap) {
+      return false;
+    }
+
+    // Binary constraints — NEVER relaxed
+    if (reqRank > 0 && CORROSION_RANK[m.corrosion_resistance] < reqRank) {
       return false;
     }
     if (
-      constraints.minTensileStrength_mpa !== undefined &&
-      m.tensile_strength_mpa < constraints.minTensileStrength_mpa
-    ) {
-      return false;
-    }
-    if (
-      constraints.maxDensity_g_cm3 !== undefined &&
-      m.density_g_cm3 > constraints.maxDensity_g_cm3
-    ) {
-      return false;
-    }
-    if (
-      constraints.maxCost_usd_kg !== undefined &&
-      m.cost_usd_kg > constraints.maxCost_usd_kg
-    ) {
-      return false;
-    }
-    if (reqRank > 0 && corrosionRank[m.corrosion_resistance] < reqRank) {
-      return false;
-    }
-    if (
-      constraints.needsFDMPrintability &&
+      c.needsFDMPrintability &&
       (m.printability_fdm === "n/a" || m.printability_fdm === "poor")
     ) {
       return false;
     }
     if (
-      constraints.electricallyConductive &&
+      c.electricallyConductive &&
       m.electrical_resistivity_ohm_m > 1e-4
     ) {
       return false;
     }
-    if (
-      constraints.thermallyConductive &&
-      m.thermal_conductivity_w_mk < 10
-    ) {
-      return false;
-    }
+
     return true;
   });
+}
 
-  if (filtered.length < 3) {
-    filtered = db.filter(
-      (m) =>
-        !constraints.needsFDMPrintability ||
-        (m.printability_fdm !== "n/a" && m.printability_fdm !== "poor")
-    );
-  }
-
-  if (filtered.length === 0) {
-    filtered = [...db];
-  }
-
-  return filtered;
+function buildReason(
+  m: Material,
+  w: UserConstraints["priorityWeights"]
+): string {
+  const ranked = [
+    { label: "thermal resistance", v: w.thermal },
+    { label: "tensile strength", v: w.strength },
+    { label: "low density", v: w.weight },
+    { label: "cost efficiency", v: w.cost },
+    { label: "corrosion resistance", v: w.corrosion }
+  ].sort((a, b) => b.v - a.v);
+  return `Top ${ranked[0].label} and ${ranked[1].label} within ${m.category.toLowerCase()} candidates.`;
 }
 
 export function scoreMaterials(
   constraints: UserConstraints,
   db: Material[]
 ): RankedMaterial[] {
-  const normalisedConstraints = {
-    ...constraints,
-    priorityWeights: normalisePriorityWeights(constraints.priorityWeights)
+  const intent = inferCategoryIntent(constraints.rawQuery ?? "");
+
+  // Progressive fallback — category intent persists passes 1-3
+  const passes = [
+    { relaxCost: false, relaxNumeric: false, ignoreCategory: false },
+    { relaxCost: true, relaxNumeric: false, ignoreCategory: false },
+    { relaxCost: true, relaxNumeric: true, ignoreCategory: false },
+    { relaxCost: true, relaxNumeric: true, ignoreCategory: true }
+  ];
+
+  let filtered: Material[] = [];
+  for (const opts of passes) {
+    filtered = hardFilter(db, constraints, intent, opts);
+    if (filtered.length >= 3) {
+      break;
+    }
+  }
+  if (filtered.length === 0) {
+    filtered = [...db];
+  }
+
+  // Compute ranges ONLY within filtered set
+  // This is critical — do NOT use full DB ranges
+  const temps = filtered.map((m) => m.max_service_temp_c);
+  const strengths = filtered.map((m) => m.tensile_strength_mpa);
+  const densities = filtered.map((m) => m.density_g_cm3);
+  const costs = filtered.map((m) => m.cost_usd_kg);
+
+  const minT = Math.min(...temps);
+  const maxT = Math.max(...temps);
+  const minS = Math.min(...strengths);
+  const maxS = Math.max(...strengths);
+  const minR = Math.min(...densities);
+  const maxR = Math.max(...densities);
+
+  const w = constraints.priorityWeights;
+
+  // Validate weights sum to 1.0, fix floating point drift
+  const wTotal = w.thermal + w.strength + w.weight + w.cost + w.corrosion;
+  const wNorm = wTotal > 0 ? wTotal : 1;
+  const wt = {
+    thermal: w.thermal / wNorm,
+    strength: w.strength / wNorm,
+    weight: w.weight / wNorm,
+    cost: w.cost / wNorm,
+    corrosion: w.corrosion / wNorm
   };
-  const filtered = filterMaterialsForConstraints(normalisedConstraints, db);
-  const maxT = Math.max(...filtered.map((m) => m.max_service_temp_c));
-  const maxStr = Math.max(...filtered.map((m) => m.tensile_strength_mpa));
-  const maxRho = Math.max(...filtered.map((m) => m.density_g_cm3));
-  const maxC = Math.max(...filtered.map((m) => m.cost_usd_kg));
-  const w = normalisedConstraints.priorityWeights;
 
-  return filtered
-    .map((m) => {
-      const thermal = maxT > 0 ? m.max_service_temp_c / maxT : 0;
-      const strength = maxStr > 0 ? m.tensile_strength_mpa / maxStr : 0;
-      const lightness = maxRho > 0 ? 1 - m.density_g_cm3 / maxRho : 0;
-      const costEff = maxC > 0 ? 1 - m.cost_usd_kg / maxC : 0;
-      const corrosion = corrosionRank[m.corrosion_resistance] / 4;
+  const scored = filtered.map((m) => {
+    const thermal = norm(m.max_service_temp_c, minT, maxT);
+    const strength = norm(m.tensile_strength_mpa, minS, maxS);
+    const lightness = 1 - norm(m.density_g_cm3, minR, maxR);
+    const costEff = 1 - normLogCost(m.cost_usd_kg, costs);
+    const corrosion = CORROSION_RANK[m.corrosion_resistance] / 4;
 
-      const score = Math.round(
-        100 *
-          (w.thermal * thermal +
-            w.strength * strength +
-            w.weight * lightness +
-            w.cost * costEff +
-            w.corrosion * corrosion)
-      );
+    // Weighted sum — guaranteed [0, 1] because each term is [0,1]
+    // and weights sum to 1.0
+    const raw =
+      wt.thermal * thermal +
+      wt.strength * strength +
+      wt.weight * lightness +
+      wt.cost * costEff +
+      wt.corrosion * corrosion;
 
-      return { ...m, score, matchReason: buildReason(m, w) };
-    })
+    // Scale to [0, 100] and round to integer
+    const score = Math.round(Math.min(100, Math.max(0, raw * 100)));
+
+    return { ...m, score, matchReason: buildReason(m, wt) };
+  });
+
+  return scored
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
 }

@@ -2,7 +2,7 @@
 
 ## What it does
 
-Smart Alloy Selector is an AI-assisted engineering material recommendation tool built for MET-QUEST'26. A user describes a mechanical, thermal, electrical, corrosion, or manufacturing problem in plain English, the system extracts constraints, filters a curated 42-material database, and ranks the best candidates with a deterministic weighted scoring engine. The app also supports follow-up questions, side-by-side comparison, and a searchable database explorer.
+Smart Alloy Selector is an AI-assisted engineering material recommendation tool built for MET-QUEST'26. A user describes a mechanical, thermal, electrical, corrosion, or manufacturing problem in plain English, the system extracts constraints, filters a curated 65-material database, and ranks the best candidates with a deterministic weighted scoring engine. The app also supports follow-up questions, side-by-side comparison, and a searchable database explorer.
 
 ## Tech stack
 
@@ -66,7 +66,7 @@ GitHub Pages is designed for static hosting. This project needs a server-side AP
 
 ## Materials database
 
-- 42 curated materials
+- 65 curated materials
 - 5 categories: Metal, Polymer, Ceramic, Composite, Solder
 - 18 core properties per material
 - Sources include ASM Handbook, MatWeb, NASA TPSX, supplier datasheets, and manufacturer technical references

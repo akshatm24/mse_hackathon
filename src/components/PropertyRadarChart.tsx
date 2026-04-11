@@ -11,7 +11,6 @@ import {
 } from "recharts";
 
 import materialsDB from "@/lib/materials-db";
-import { CORROSION_RANKS, QUALITY_RANKS } from "@/lib/scoring";
 import { RankedMaterial } from "@/types";
 
 interface PropertyRadarChartProps {
@@ -24,7 +23,25 @@ const series = [
   { stroke: "#34D399", fill: "rgba(52,211,153,0.10)" }
 ];
 
+const corrosionRanks = {
+  excellent: 4,
+  good: 3,
+  fair: 2,
+  poor: 1
+} as const;
+
+const printabilityRanks = {
+  excellent: 4,
+  good: 3,
+  fair: 2,
+  poor: 1,
+  "n/a": 0
+} as const;
+
 function normalise(value: number, maxValue: number) {
+  if (maxValue === 0) {
+    return 100;
+  }
   if (maxValue <= 0) {
     return 0;
   }
@@ -76,13 +93,13 @@ export default function PropertyRadarChart({
     {
       axis: "Corrosion",
       ...Object.fromEntries(
-        topThree.map((item) => [item.name, CORROSION_RANKS[item.corrosion_resistance] * 25])
+        topThree.map((item) => [item.name, corrosionRanks[item.corrosion_resistance] * 25])
       )
     },
     {
       axis: "Printability",
       ...Object.fromEntries(
-        topThree.map((item) => [item.name, QUALITY_RANKS[item.printability_fdm] * 25])
+        topThree.map((item) => [item.name, printabilityRanks[item.printability_fdm] * 25])
       )
     }
   ];

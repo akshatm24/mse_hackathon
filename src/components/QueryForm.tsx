@@ -43,11 +43,11 @@ export default function QueryForm({
   const [showFilters, setShowFilters] = useState(false);
   const [openWeight, setOpenWeight] = useState<WeightKey | null>(null);
   const [weights, setWeights] = useState<Record<WeightKey, number>>({
-    strength: 0.2,
-    thermal: 0.2,
-    weight: 0.2,
-    cost: 0.2,
-    corrosion: 0.2
+    strength: 0.3,
+    thermal: 0.15,
+    weight: 0.15,
+    cost: 0.3,
+    corrosion: 0.1
   });
   const [maxTemp, setMaxTemp] = useState("");
   const [minTensile, setMinTensile] = useState("");

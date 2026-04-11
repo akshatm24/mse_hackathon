@@ -144,7 +144,7 @@ export default function DatabaseExplorer() {
     <section className="space-y-4">
       <div>
         <div className="text-[10px] uppercase tracking-[0.12em] text-surface-600">
-          All 42 Materials
+          All {materialsDB.length} Materials
         </div>
         <h2 className="mt-1 text-[20px] font-semibold text-zinc-100">Material Database</h2>
         <p className="mt-1 text-[13px] leading-[1.7] text-zinc-500">
