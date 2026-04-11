@@ -34,6 +34,10 @@ function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | u
       typeof manual.electricallyConductive === "boolean"
         ? manual.electricallyConductive
         : undefined,
+    electricallyInsulating:
+      typeof manual.electricallyInsulating === "boolean"
+        ? manual.electricallyInsulating
+        : undefined,
     thermallyConductive:
       typeof manual.thermallyConductive === "boolean"
         ? manual.thermallyConductive
@@ -65,6 +69,8 @@ function mergeConstraints(
     corrosionRequired: overrides.corrosionRequired ?? base.corrosionRequired,
     electricallyConductive:
       overrides.electricallyConductive ?? base.electricallyConductive,
+    electricallyInsulating:
+      overrides.electricallyInsulating ?? base.electricallyInsulating,
     thermallyConductive:
       overrides.thermallyConductive ?? base.thermallyConductive,
     needsFDMPrintability:

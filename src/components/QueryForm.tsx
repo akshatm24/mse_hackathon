@@ -39,16 +39,21 @@ export default function QueryForm({
   loading,
   apiAvailable
 }: QueryFormProps) {
+  const defaultWeights: Record<WeightKey, number> = useMemo(
+    () => ({
+      strength: 0.3,
+      thermal: 0.15,
+      weight: 0.15,
+      cost: 0.3,
+      corrosion: 0.1
+    }),
+    []
+  );
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [openWeight, setOpenWeight] = useState<WeightKey | null>(null);
-  const [weights, setWeights] = useState<Record<WeightKey, number>>({
-    strength: 0.3,
-    thermal: 0.15,
-    weight: 0.15,
-    cost: 0.3,
-    corrosion: 0.1
-  });
+  const [weights, setWeights] = useState<Record<WeightKey, number>>(defaultWeights);
+  const [weightsDirty, setWeightsDirty] = useState(false);
   const [maxTemp, setMaxTemp] = useState("");
   const [minTensile, setMinTensile] = useState("");
   const [maxDensity, setMaxDensity] = useState("");
@@ -101,6 +106,7 @@ export default function QueryForm({
   }
 
   function updateWeight(targetKey: WeightKey, nextValue: number) {
+    setWeightsDirty(true);
     setWeights((current) => {
       const clamped = clamp(nextValue, 0.05, 0.8);
       const otherKeys = propertyMeta
@@ -133,7 +139,7 @@ export default function QueryForm({
   function handleSubmit() {
     const trimmed = query.trim();
     const hasManual =
-      maxTemp || minTensile || maxDensity || maxCost || needsFDM;
+      maxTemp || minTensile || maxDensity || maxCost || needsFDM || weightsDirty;
 
     if ((!trimmed && !hasManual) || loading) {
       return;
@@ -146,7 +152,7 @@ export default function QueryForm({
       maxDensity_g_cm3: parseNumber(maxDensity),
       maxCost_usd_kg: parseNumber(maxCost),
       needsFDMPrintability: needsFDM || undefined,
-      priorityWeights: weights
+      priorityWeights: weightsDirty ? weights : undefined
     });
   }
 

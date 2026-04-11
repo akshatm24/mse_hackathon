@@ -30,6 +30,7 @@ export interface UserConstraints {
   maxCost_usd_kg?: number;
   corrosionRequired?: "excellent" | "good" | "fair";
   electricallyConductive?: boolean;
+  electricallyInsulating?: boolean;
   thermallyConductive?: boolean;
   needsFDMPrintability?: boolean;
   priorityWeights: {

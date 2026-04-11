@@ -1,120 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import { RankedMaterial, UserConstraints } from "@/types";
+import { inferQueryIntent } from "@/lib/query-intent";
 import { normalisePriorityWeights } from "@/lib/weights";
 
-const SIGNALS = {
-  cost: [
-    "cheap",
-    "cheapest",
-    "budget",
-    "affordable",
-    "low cost",
-    "inexpensive",
-    "low price",
-    "economical",
-    "under $",
-    "price",
-    "cost effective",
-    "least expensive",
-    "least cost",
-    "lowest cost",
-    "lowest price",
-    "minimum cost",
-    "minimum price",
-    "save money",
-    "low budget",
-    "frugal",
-    "economy",
-    "bargain",
-    "value",
-    "price point"
-  ],
-  thermal: [
-    "heat",
-    "hot",
-    "temperature",
-    "temp",
-    "warp",
-    "melt",
-    "thermal",
-    "motor",
-    "engine",
-    "furnace",
-    "oven",
-    "°c",
-    "celsius",
-    "degrees",
-    "fire",
-    "high temp",
-    "heat resistant",
-    "reflow",
-    "autoclave",
-    "service temp",
-    "thermal cycling",
-    "high temperature"
-  ],
-  weight: [
-    "light",
-    "lightweight",
-    "low weight",
-    "low density",
-    "light weight",
-    "drone",
-    "aircraft",
-    "aerospace",
-    "portable",
-    "wearable",
-    "rocket",
-    "satellite",
-    "weight saving",
-    "mass reduction",
-    "grams",
-    "low mass"
-  ],
-  strength: [
-    "strong",
-    "strength",
-    "load",
-    "stress",
-    "force",
-    "structural",
-    "bearing",
-    "high strength",
-    "tensile",
-    "yield",
-    "mpa",
-    "gpa",
-    "stiff",
-    "rigid",
-    "tough",
-    "load bearing",
-    "support",
-    "withstand",
-    "durable",
-    "robust",
-    "bracket"
-  ],
-  corrosion: [
-    "corros",
-    "rust",
-    "marine",
-    "seawater",
-    "acid",
-    "chemical",
-    "ocean",
-    "salt",
-    "oxidat",
-    "outdoor",
-    "weather",
-    "wet",
-    "moisture",
-    "humid",
-    "saltwater"
-  ]
-} as const;
-
-type Axis = keyof typeof SIGNALS;
+type Axis = "cost" | "thermal" | "weight" | "strength" | "corrosion";
 
 function getClient() {
   const key = process.env.GEMINI_API_KEY;
@@ -125,20 +15,15 @@ function getClient() {
 }
 
 function countSignalHits(query: string) {
-  const q = query.toLowerCase();
+  const { axisHits } = inferQueryIntent(query);
 
   return {
-    cost: SIGNALS.cost.filter((signal) => q.includes(signal)).length,
-    thermal: SIGNALS.thermal.filter((signal) => q.includes(signal)).length,
-    weight: SIGNALS.weight.filter((signal) => q.includes(signal)).length,
-    strength: SIGNALS.strength.filter((signal) => q.includes(signal)).length,
-    corrosion: SIGNALS.corrosion.filter((signal) => q.includes(signal)).length
+    cost: axisHits.cost,
+    thermal: axisHits.thermal,
+    weight: axisHits.weight,
+    strength: axisHits.strength,
+    corrosion: axisHits.corrosion
   };
-}
-
-function hasAnySignal(query: string, axis: Axis) {
-  const q = query.toLowerCase();
-  return SIGNALS[axis].some((signal) => q.includes(signal));
 }
 
 function repairPriorityWeights(
@@ -187,8 +72,9 @@ function repairPriorityWeights(
 
 export function heuristicExtract(query: string): UserConstraints {
   const q = query.toLowerCase();
+  const profile = inferQueryIntent(query);
 
-  const hits = countSignalHits(query);
+  const hits = profile.axisHits;
 
   const sorted = Object.entries(hits).sort((left, right) => right[1] - left[1]);
   const [topAxis, topCount] = sorted[0];
@@ -228,10 +114,16 @@ export function heuristicExtract(query: string): UserConstraints {
       weight: 0.05,
       corrosion: 0.05
     };
-    (paired as Record<string, number>)[topAxis] = 0.5;
-    (paired as Record<string, number>)[secondAxis] = 0.3;
+    const shouldFavorWeight =
+      secondAxis === "weight" &&
+      /\blight(?:weight)?\b|\blow[- ]density\b/i.test(query);
+    const primaryAxis = shouldFavorWeight ? secondAxis : topAxis;
+    const secondaryAxis = shouldFavorWeight ? topAxis : secondAxis;
+
+    (paired as Record<string, number>)[primaryAxis] = 0.5;
+    (paired as Record<string, number>)[secondaryAxis] = 0.3;
     const others = Object.keys(paired).filter(
-      (key) => key !== topAxis && key !== secondAxis
+      (key) => key !== primaryAxis && key !== secondaryAxis
     );
     const each = (1 - 0.5 - 0.3) / others.length;
     others.forEach((key) => {
@@ -242,11 +134,11 @@ export function heuristicExtract(query: string): UserConstraints {
 
   if (topAxis === "cost" && topCount >= 1 && secondCount === 0) {
     weights = {
-      thermal: 0.05,
-      strength: 0.05,
-      weight: 0.05,
-      cost: 0.8,
-      corrosion: 0.05
+      thermal: 0.025,
+      strength: 0.025,
+      weight: 0.025,
+      cost: 0.9,
+      corrosion: 0.025
     };
   }
 
@@ -269,39 +161,20 @@ export function heuristicExtract(query: string): UserConstraints {
     /(?:under|less than|below|max|budget[^\d]*)\s*\$?\s*(\d+)/i
   );
 
-  const needsFDM = [
-    "3d print",
-    "fdm",
-    "fused",
-    "desktop printer",
-    "filament",
-    "pla",
-    "petg",
-    "print",
-    "nozzle"
-  ].some((signal) => q.includes(signal));
-  const practicalFdmQuery =
-    needsFDM &&
-    !["aerospace", "autoclave", "medical", "steril", "flame", "high-temp", "high temperature"].some(
-      (signal) => q.includes(signal)
-    );
-
-  const needsConductive = [
-    "conduct",
-    "electrical",
-    "resistiv",
-    "probe",
-    "circuit",
-    "electrode",
-    "contact",
-    "pcb",
-    "current"
-  ].some((signal) => q.includes(signal));
+  const needsFDM = profile.wantsFDM;
+  const practicalFdmQuery = profile.practicalFdm;
+  const needsConductive = profile.wantsElectricalConductivity;
+  const needsInsulating = profile.wantsElectricalInsulation;
+  const needsThermalConductive = profile.wantsThermalConductivity;
 
   const corrosionRequired =
     q.includes("highly corrosive") || q.includes("strong acid")
       ? ("excellent" as const)
-      : q.includes("marine") || q.includes("seawater") || q.includes("corrosion resist")
+      : profile.wantsAcidResistance
+        ? ("excellent" as const)
+        : profile.wantsMarine ||
+            profile.wantsOutdoor ||
+            q.includes("corrosion resist")
         ? ("good" as const)
         : undefined;
 
@@ -314,14 +187,25 @@ export function heuristicExtract(query: string): UserConstraints {
         ? parseFloat(budgetMatch[1])
         : undefined;
 
-  if (practicalFdmQuery && (tempMatch ? parseInt(tempMatch[1], 10) : contextTemp ?? 0) <= 120) {
-    weights = {
-      thermal: 0.3,
-      strength: 0.2,
-      weight: 0.15,
-      cost: 0.3,
-      corrosion: 0.05
-    };
+  if (practicalFdmQuery) {
+    const hasThermalContext =
+      topAxis === "thermal" || tempMatch !== null || contextTemp !== undefined;
+
+    weights = hasThermalContext
+      ? {
+          thermal: 0.35,
+          strength: 0.25,
+          weight: 0.15,
+          cost: 0.2,
+          corrosion: 0.05
+        }
+      : {
+          thermal: 0.15,
+          strength: 0.35,
+          weight: 0.2,
+          cost: 0.25,
+          corrosion: 0.05
+        };
   }
 
   return {
@@ -329,6 +213,8 @@ export function heuristicExtract(query: string): UserConstraints {
     maxCost_usd_kg: maxCost,
     needsFDMPrintability: needsFDM || undefined,
     electricallyConductive: needsConductive || undefined,
+    electricallyInsulating: needsInsulating || undefined,
+    thermallyConductive: needsThermalConductive || undefined,
     corrosionRequired,
     priorityWeights: normalisePriorityWeights(weights),
     rawQuery: query
@@ -364,6 +250,18 @@ CRITICAL WEIGHT RULES — violating these makes the app useless:
   "furnace", "reflow" → thermal weight MUST be >= 0.60
 - If user says "marine", "seawater", "acid", "corrosion"
   → corrosion weight MUST be >= 0.60
+- If user says "metal", "alloy", "steel" do not treat polymer,
+  ceramic, or composite materials as a better semantic match.
+- If user says "plastic", "polymer" do not treat metals or
+  ceramics as a better semantic match.
+- If user says "3D print", "FDM", "filament" then
+  needsFDMPrintability MUST be true.
+- If user says "conductive", "current", "probe", "electrode",
+  "connector", "contact" then electricallyConductive MUST be true.
+- If user says "insulator", "insulating", "dielectric",
+  "non-conductive" then electricallyInsulating MUST be true.
+- If user says "thermally conductive", "heat sink",
+  "heat spreader" then thermallyConductive MUST be true.
 - NEVER use balanced weights (all 0.20) unless the user gave
   absolutely NO priority signal whatsoever.
 - Weights MUST sum to exactly 1.0.
@@ -381,6 +279,7 @@ JSON schema (omit fields you cannot infer):
   "maxCost_usd_kg": number,
   "corrosionRequired": "excellent"|"good"|"fair",
   "electricallyConductive": boolean,
+  "electricallyInsulating": boolean,
   "thermallyConductive": boolean,
   "needsFDMPrintability": boolean,
   "priorityWeights": {
@@ -403,10 +302,25 @@ User query: ${query}`;
       .trim();
     const parsed = JSON.parse(clean) as Partial<UserConstraints>;
     const fallback = heuristicExtract(query);
+    const profile = inferQueryIntent(query);
 
     return {
       ...fallback,
       ...parsed,
+      needsFDMPrintability:
+        profile.wantsFDM ? true : parsed.needsFDMPrintability ?? fallback.needsFDMPrintability,
+      electricallyConductive:
+        profile.wantsElectricalConductivity
+          ? true
+          : parsed.electricallyConductive ?? fallback.electricallyConductive,
+      electricallyInsulating:
+        profile.wantsElectricalInsulation
+          ? true
+          : parsed.electricallyInsulating ?? fallback.electricallyInsulating,
+      thermallyConductive:
+        profile.wantsThermalConductivity
+          ? true
+          : parsed.thermallyConductive ?? fallback.thermallyConductive,
       priorityWeights: repairPriorityWeights(
         query,
         parsed.priorityWeights,
