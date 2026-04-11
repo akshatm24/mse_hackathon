@@ -163,8 +163,8 @@ export default function HomePage() {
             </h1>
             <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.7] text-zinc-500">
               Describe your engineering challenge in plain English. The AI extracts
-              constraints and ranks {materialCount}+ materials from ASM Handbook and MatWeb in
-              under 3 seconds.
+              constraints and ranks {materialCount}+ materials from curated references and
+              the Materials Project in under 3 seconds.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
@@ -264,6 +264,10 @@ export default function HomePage() {
           </section>
         ) : null}
 
+        <section className="mx-auto mt-12 max-w-6xl px-4">
+          <NovelAlloyPredictor />
+        </section>
+
         <section id="database" className="mx-auto mt-12 max-w-6xl px-4">
           <DatabaseExplorer />
         </section>
@@ -278,7 +282,7 @@ export default function HomePage() {
               Smart Alloy Selector · MET-QUEST&apos;26
             </div>
             <div className="text-[10px] text-surface-700">
-              {materialCount} materials · ASM Handbook · MatWeb · NASA TPSX
+              {materialCount} materials · ASM Handbook · MatWeb · Materials Project
             </div>
             <div className="flex items-center gap-3 text-[10px] text-surface-700">
               <span>Built with Next.js + Gemini</span>

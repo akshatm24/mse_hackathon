@@ -1,4 +1,6 @@
-import { Material, UserConstraints, RankedMaterial } from "@/types";
+import { inferQueryIntent, QueryIntentProfile } from "@/lib/query-intent";
+import { normalisePriorityWeights } from "@/lib/weights";
+import { Material, RankedMaterial, UserConstraints } from "@/types";
 
 const CORROSION_RANK = {
   excellent: 4,
@@ -7,8 +9,22 @@ const CORROSION_RANK = {
   poor: 1
 } as const;
 
-// Clamp-safe min-max normalisation within a set
-// Returns 1.0 when max===min (all equal = no penalty for anyone)
+const PRINTABILITY_RANK = {
+  excellent: 4,
+  good: 3,
+  fair: 2,
+  poor: 1,
+  "n/a": 0
+} as const;
+
+const MACHINABILITY_RANK = {
+  excellent: 4,
+  good: 3,
+  fair: 2,
+  poor: 1,
+  "n/a": 0
+} as const;
+
 function norm(val: number, min: number, max: number): number {
   if (max === min) {
     return 1.0;
@@ -16,14 +32,9 @@ function norm(val: number, min: number, max: number): number {
   return Math.max(0, Math.min(1, (val - min) / (max - min)));
 }
 
-// Log-scale normalisation — prevents $40,000 outlier from
-// collapsing the cost axis for $1-$200 materials
-function normLogCost(cost: number, allCosts: number[]): number {
-  const logs = allCosts.map((c) => Math.log1p(c));
-  const logVal = Math.log1p(cost);
-  const logMin = Math.min(...logs);
-  const logMax = Math.max(...logs);
-  return norm(logVal, logMin, logMax);
+function logNorm(val: number, allVals: number[]): number {
+  const logs = allVals.map((value) => Math.log1p(Math.max(0, value)));
+  return norm(Math.log1p(Math.max(0, val)), Math.min(...logs), Math.max(...logs));
 }
 
 function prefersExpandedMaterials(rawQuery: string): boolean {
@@ -225,19 +236,79 @@ function inferCategoryIntent(rawQuery: string): {
     return { exclude: [], includeOnly: ["Metal"] };
   }
 
-  // No clear signal: exclude nothing, let scoring decide
-  return { exclude: [] };
+  return {
+    ...profile,
+    categoryIntent:
+      preferredCategories && preferredCategories.length > 0
+        ? {
+            ...profile.categoryIntent,
+            includeOnly: preferredCategories
+          }
+        : profile.categoryIntent,
+    wantsFDM: profile.wantsFDM || semanticTags.has("fdm") || semanticTags.has("3d-printing"),
+    wantsElectricalConductivity:
+      profile.wantsElectricalConductivity ||
+      semanticTags.has("conductive") ||
+      semanticTags.has("electrical"),
+    wantsElectricalInsulation:
+      profile.wantsElectricalInsulation ||
+      semanticTags.has("insulator") ||
+      semanticTags.has("insulating") ||
+      semanticTags.has("dielectric"),
+    wantsThermalConductivity:
+      profile.wantsThermalConductivity ||
+      semanticTags.has("thermally-conductive") ||
+      semanticTags.has("thermal-management"),
+    wantsMachinability:
+      profile.wantsMachinability ||
+      semanticTags.has("machinable") ||
+      semanticTags.has("easy-machining"),
+    wantsHardness:
+      profile.wantsHardness ||
+      semanticTags.has("hard") ||
+      semanticTags.has("wear-resistant") ||
+      semanticTags.has("tooling"),
+    wantsBiocompatible:
+      profile.wantsBiocompatible ||
+      semanticTags.has("biocompatible") ||
+      semanticTags.has("implant") ||
+      semanticTags.has("medical"),
+    wantsOutdoor:
+      profile.wantsOutdoor ||
+      semanticTags.has("outdoor") ||
+      semanticTags.has("weather") ||
+      semanticTags.has("uv"),
+    wantsMarine:
+      profile.wantsMarine || semanticTags.has("marine") || semanticTags.has("seawater"),
+    wantsAcidResistance:
+      profile.wantsAcidResistance ||
+      semanticTags.has("acid") ||
+      semanticTags.has("chemical") ||
+      semanticTags.has("corrosion"),
+    wantsElectronics:
+      profile.wantsElectronics ||
+      semanticTags.has("electronics") ||
+      semanticTags.has("pcb") ||
+      semanticTags.has("solder"),
+    wantsProbe:
+      profile.wantsProbe ||
+      semanticTags.has("probe") ||
+      semanticTags.has("contact") ||
+      semanticTags.has("electrode"),
+    wantsStructural:
+      profile.wantsStructural ||
+      semanticTags.has("structural") ||
+      semanticTags.has("bracket") ||
+      semanticTags.has("frame"),
+    relevanceTerms: [...new Set([...profile.relevanceTerms, ...semanticTags])]
+  };
 }
 
 function hardFilter(
   db: Material[],
-  c: UserConstraints,
-  intent: {
-    exclude: Material["category"][];
-    includeOnly?: Material["category"][];
-    excludeIds?: string[];
-  },
-  opts: {
+  constraints: UserConstraints,
+  profile: QueryIntentProfile,
+  options: {
     relaxCost: boolean;
     relaxNumeric: boolean;
     ignoreCategory: boolean;
@@ -254,22 +325,39 @@ function hardFilter(
     ? (c.maxCost_usd_kg ?? Infinity) * 3
     : (c.maxCost_usd_kg ?? Infinity);
 
-  return db.filter((m) => {
-    // Category intent — only ignored in absolute last resort
-    if (!opts.ignoreCategory) {
-      if (intent.exclude.includes(m.category)) {
+  return db.filter((material) => {
+    const materialText = `${material.name} ${material.subcategory} ${material.tags.join(" ")}`.toLowerCase();
+
+    if (!options.ignoreCategory) {
+      if (intent.exclude.includes(material.category)) {
         return false;
       }
-      if (intent.includeOnly && !intent.includeOnly.includes(m.category)) {
+      if (intent.includeOnly && !intent.includeOnly.includes(material.category)) {
         return false;
       }
-      if (intent.excludeIds?.includes(m.id)) {
+      if (intent.excludeIds?.includes(material.id)) {
         return false;
       }
     }
 
-    // Numeric hard constraints
-    if (!opts.relaxNumeric) {
+    if (
+      !options.ignoreCategory &&
+      profile.wantsElectronics &&
+      material.category === "Solder" &&
+      !includesAny(materialText, ["electronics", "pcb", "rohs", "microelectronics", "solder"])
+    ) {
+      return false;
+    }
+
+    if (
+      !options.ignoreCategory &&
+      profile.wantsProbe &&
+      material.data_source.startsWith("Materials Project API")
+    ) {
+      return false;
+    }
+
+    if (!options.relaxNumeric) {
       if (
         !isElectronicsSolderQuery &&
         c.maxTemperature_c !== undefined &&
@@ -278,18 +366,20 @@ function hardFilter(
         return false;
       }
       if (
-        c.minTensileStrength_mpa !== undefined &&
-        m.tensile_strength_mpa < c.minTensileStrength_mpa
+        constraints.minTensileStrength_mpa !== undefined &&
+        material.tensile_strength_mpa < constraints.minTensileStrength_mpa
       ) {
         return false;
       }
-      if (c.maxDensity_g_cm3 !== undefined && m.density_g_cm3 > c.maxDensity_g_cm3) {
+      if (
+        constraints.maxDensity_g_cm3 !== undefined &&
+        material.density_g_cm3 > constraints.maxDensity_g_cm3
+      ) {
         return false;
       }
     }
 
-    // Cost — relaxed separately
-    if (m.cost_usd_kg > costCap) {
+    if (material.cost_usd_kg > costCap) {
       return false;
     }
 
@@ -310,15 +400,37 @@ function hardFilter(
       return false;
     }
     if (
-      c.needsFDMPrintability &&
-      (m.printability_fdm === "n/a" || m.printability_fdm === "poor")
+      requiredCorrosion > 0 &&
+      CORROSION_RANK[material.corrosion_resistance] < requiredCorrosion
     ) {
       return false;
     }
+
     if (
-      c.electricallyConductive &&
-      m.electrical_resistivity_ohm_m > 1e-4
+      requiresFdm &&
+      (material.printability_fdm === "n/a" || material.printability_fdm === "poor")
     ) {
+      return false;
+    }
+
+    const conductivityThreshold =
+      profile.wantsMachinability || profile.wantsProbe || profile.wantsElectronics
+        ? 2e-7
+        : 1e-5;
+
+    if (requiresConductive && material.electrical_resistivity_ohm_m > conductivityThreshold) {
+      return false;
+    }
+
+    if (requiresInsulating && material.electrical_resistivity_ohm_m < 1e8) {
+      return false;
+    }
+
+    if (requiresThermallyConductive && material.thermal_conductivity_w_mk < 15) {
+      return false;
+    }
+
+    if (!options.relaxNumeric && profile.wantsMachinability && material.machinability === "poor") {
       return false;
     }
 
@@ -327,17 +439,249 @@ function hardFilter(
 }
 
 function buildReason(
-  m: Material,
-  w: UserConstraints["priorityWeights"]
+  material: Material,
+  weights: UserConstraints["priorityWeights"],
+  profile: QueryIntentProfile
 ): string {
-  const ranked = [
-    { label: "thermal resistance", v: w.thermal },
-    { label: "tensile strength", v: w.strength },
-    { label: "low density", v: w.weight },
-    { label: "cost efficiency", v: w.cost },
-    { label: "corrosion resistance", v: w.corrosion }
-  ].sort((a, b) => b.v - a.v);
-  return `Top ${ranked[0].label} and ${ranked[1].label} within ${m.category.toLowerCase()} candidates.`;
+  const reasons: string[] = [];
+
+  if (profile.categoryIntent.includeOnly?.includes(material.category)) {
+    reasons.push(`${material.category.toLowerCase()} category fit`);
+  }
+  if (profile.wantsElectricalConductivity && material.electrical_resistivity_ohm_m <= 1e-6) {
+    reasons.push("strong electrical conductivity");
+  }
+  if (profile.wantsElectricalInsulation && material.electrical_resistivity_ohm_m >= 1e8) {
+    reasons.push("electrical insulation");
+  }
+  if (profile.wantsThermalConductivity && material.thermal_conductivity_w_mk >= 20) {
+    reasons.push("high thermal conductivity");
+  }
+  if (profile.wantsFDM && PRINTABILITY_RANK[material.printability_fdm] >= 3) {
+    reasons.push("practical FDM printability");
+  }
+  if (profile.wantsMachinability && MACHINABILITY_RANK[material.machinability] >= 3) {
+    reasons.push("easy machining");
+  }
+  if (profile.wantsHardness && (material.hardness_vickers ?? 0) >= 250) {
+    reasons.push("high surface hardness");
+  }
+  if (profile.wantsBiocompatible && includesAny(material.tags.join(" ").toLowerCase(), ["biomedical", "medical", "dental"])) {
+    reasons.push("biomedical fit");
+  }
+  if (profile.wantsMarine && includesAny(material.tags.join(" ").toLowerCase(), ["marine", "seawater"])) {
+    reasons.push("marine service compatibility");
+  }
+  if (profile.wantsAcidResistance && includesAny(material.tags.join(" ").toLowerCase(), ["acid-resistant", "chemical", "corrosion-resistant"])) {
+    reasons.push("chemical corrosion resistance");
+  }
+  if (profile.wantsOutdoor && includesAny(material.tags.join(" ").toLowerCase(), ["outdoor", "uv-resistant"])) {
+    reasons.push("outdoor weathering fit");
+  }
+  if (profile.wantsProbe && includesAny(material.tags.join(" ").toLowerCase(), ["probe-tip", "electrical", "conductive", "connectors"])) {
+    reasons.push("probe/contact use case fit");
+  }
+  if (profile.wantsElectronics && includesAny(material.tags.join(" ").toLowerCase(), ["electronics", "pcb", "rohs", "solder"])) {
+    reasons.push("electronics use case fit");
+  }
+
+  if (reasons.length >= 2) {
+    return `Best match for ${reasons[0]} and ${reasons[1]}.`;
+  }
+
+  const rankedAxes = [
+    { label: "thermal resistance", value: weights.thermal },
+    { label: "tensile strength", value: weights.strength },
+    { label: "low density", value: weights.weight },
+    { label: "cost efficiency", value: weights.cost },
+    { label: "corrosion resistance", value: weights.corrosion }
+  ].sort((left, right) => right.value - left.value);
+
+  return `Top ${rankedAxes[0].label} and ${rankedAxes[1].label} match within ${material.category.toLowerCase()} candidates.`;
+}
+
+function queryFitBonus(
+  material: Material,
+  profile: QueryIntentProfile,
+  filtered: Material[],
+  rawQuery: string
+): number {
+  const text = `${material.name} ${material.subcategory} ${material.category} ${material.tags.join(" ")}`.toLowerCase();
+  const resistivities = safeArray(
+    filtered.map((candidate) => candidate.electrical_resistivity_ohm_m),
+    material.electrical_resistivity_ohm_m
+  );
+  const thermalConductivities = safeArray(
+    filtered.map((candidate) => candidate.thermal_conductivity_w_mk),
+    material.thermal_conductivity_w_mk
+  );
+  const costs = safeArray(
+    filtered.map((candidate) => candidate.cost_usd_kg),
+    material.cost_usd_kg
+  );
+  const hardnessValues = safeArray(
+    filtered
+      .map((candidate) => candidate.hardness_vickers)
+      .filter((value): value is number => value !== null),
+    material.hardness_vickers ?? 0
+  );
+  const specificStrengthValues = safeArray(
+    filtered.map((candidate) => candidate.tensile_strength_mpa / candidate.density_g_cm3),
+    material.tensile_strength_mpa / material.density_g_cm3
+  );
+
+  const conductivityQuality = 1 - logNorm(material.electrical_resistivity_ohm_m, resistivities);
+  const insulationQuality = logNorm(material.electrical_resistivity_ohm_m, resistivities);
+  const thermalConductivityQuality = norm(
+    material.thermal_conductivity_w_mk,
+    Math.min(...thermalConductivities),
+    Math.max(...thermalConductivities)
+  );
+  const linearCostEfficiency =
+    1 - norm(material.cost_usd_kg, Math.min(...costs), Math.max(...costs));
+  const hardnessQuality =
+    material.hardness_vickers === null
+      ? 0
+      : norm(
+          material.hardness_vickers,
+          Math.min(...hardnessValues),
+          Math.max(...hardnessValues)
+        );
+  const specificStrengthQuality = norm(
+    material.tensile_strength_mpa / material.density_g_cm3,
+    Math.min(...specificStrengthValues),
+    Math.max(...specificStrengthValues)
+  );
+  const lightnessQuality =
+    1 -
+    norm(
+      material.density_g_cm3,
+      Math.min(...filtered.map((candidate) => candidate.density_g_cm3)),
+      Math.max(...filtered.map((candidate) => candidate.density_g_cm3))
+    );
+
+  let bonus = 0;
+
+  if (profile.categoryIntent.includeOnly?.includes(material.category)) {
+    bonus += 8;
+  }
+
+  if (profile.wantsFDM) {
+    bonus += 8 * (PRINTABILITY_RANK[material.printability_fdm] / 4);
+    bonus += includesAny(text, ["3d-printing", "fused-deposition", "additive"]) ? 4 : -2;
+  }
+
+  if (profile.wantsElectricalConductivity) {
+    bonus += 10 * conductivityQuality;
+  }
+
+  if (profile.wantsElectricalInsulation) {
+    bonus += 10 * insulationQuality;
+  }
+
+  if (profile.wantsThermalConductivity) {
+    bonus += 8 * thermalConductivityQuality;
+  }
+
+  if (profile.wantsMachinability) {
+    bonus += 12 * (MACHINABILITY_RANK[material.machinability] / 4);
+  }
+
+  if (profile.wantsHardness) {
+    bonus += 8 * hardnessQuality;
+  }
+
+  if (profile.wantsBiocompatible) {
+    bonus += includesAny(text, ["biomedical", "medical", "dental"]) ? 10 : -6;
+  }
+
+  if (profile.wantsMarine) {
+    bonus += includesAny(text, ["marine", "seawater", "chemical", "corrosion-resistant"])
+      ? 18
+      : -14;
+    if (material.category === "Ceramic") {
+      bonus -= 8;
+    }
+    if (
+      profile.wantsStructural &&
+      !includesAny(text, ["marine", "seawater", "chemical", "corrosion-resistant"])
+    ) {
+      bonus -= 6;
+    }
+  }
+
+  if (profile.wantsAcidResistance) {
+    bonus += includesAny(text, ["acid-resistant", "chemical", "corrosion-resistant"])
+      ? 14
+      : -6;
+  }
+
+  if (profile.wantsOutdoor) {
+    bonus += includesAny(text, ["outdoor", "uv-resistant", "weather"]) ? 16 : -14;
+  }
+
+  if (profile.wantsProbe) {
+    bonus += includesAny(text, ["probe-tip", "electrical", "conductive", "connectors"])
+      ? 14
+      : conductivityQuality * 3;
+  }
+
+  if (profile.wantsMachinability && profile.wantsElectricalConductivity) {
+    bonus += 10 * conductivityQuality * (MACHINABILITY_RANK[material.machinability] / 4);
+  }
+
+  if (profile.wantsElectronics) {
+    bonus += includesAny(text, ["electronics", "pcb", "rohs", "solder", "microelectronics"])
+      ? 18
+      : -18;
+    bonus += includesAny(text, ["brazing", "hvac", "plumbing", "stainless-joining"]) ? -18 : 0;
+    if (material.category === "Solder") {
+      bonus += 20 * linearCostEfficiency;
+      if (
+        material.cost_usd_kg > 1000 &&
+        !includesAny(rawQuery.toLowerCase(), [
+          "gold",
+          "hermetic",
+          "high-reliability",
+          "aerospace"
+        ])
+      ) {
+        bonus -= 18;
+      }
+    }
+  }
+
+  if (profile.wantsStructural) {
+    bonus += includesAny(text, ["structural", "general-purpose", "high-strength"]) ? 6 : 0;
+  }
+
+  if (profile.axisHits.weight > 0 && profile.axisHits.strength > 0) {
+    bonus += 12 * specificStrengthQuality;
+    bonus += 12 * lightnessQuality;
+  }
+
+  if (
+    profile.categoryIntent.includeOnly?.includes("Metal") &&
+    profile.axisHits.weight > 0 &&
+    material.density_g_cm3 > 6
+  ) {
+    bonus -= 15;
+  }
+
+  if (
+    profile.axisHits.cost > 0 &&
+    profile.axisHits.thermal === 0 &&
+    profile.axisHits.weight === 0 &&
+    profile.axisHits.strength === 0 &&
+    profile.axisHits.corrosion === 0
+  ) {
+    bonus += 12 * linearCostEfficiency;
+  }
+
+  const lexicalMatches = profile.relevanceTerms.filter((term) => text.includes(term)).length;
+  bonus += Math.min(8, lexicalMatches * 1.5);
+
+  return Math.max(-12, Math.min(24, bonus));
 }
 
 export function scoreMaterials(
@@ -365,60 +709,83 @@ export function scoreMaterials(
       break;
     }
   }
+
   if (filtered.length === 0) {
     filtered = [...searchDb];
   }
 
-  // Compute ranges ONLY within filtered set
-  // This is critical — do NOT use full DB ranges
-  const temps = filtered.map((m) => m.max_service_temp_c);
-  const strengths = filtered.map((m) => m.tensile_strength_mpa);
-  const densities = filtered.map((m) => m.density_g_cm3);
-  const costs = filtered.map((m) => m.cost_usd_kg);
+  const temperatures = safeArray(
+    filtered.map((material) => material.max_service_temp_c),
+    filtered[0]?.max_service_temp_c ?? 0
+  );
+  const strengths = safeArray(
+    filtered.map((material) => material.tensile_strength_mpa),
+    filtered[0]?.tensile_strength_mpa ?? 0
+  );
+  const densities = safeArray(
+    filtered.map((material) => material.density_g_cm3),
+    filtered[0]?.density_g_cm3 ?? 0
+  );
+  const costs = safeArray(
+    filtered.map((material) => material.cost_usd_kg),
+    filtered[0]?.cost_usd_kg ?? 0
+  );
 
-  const minT = Math.min(...temps);
-  const maxT = Math.max(...temps);
-  const minS = Math.min(...strengths);
-  const maxS = Math.max(...strengths);
-  const minR = Math.min(...densities);
-  const maxR = Math.max(...densities);
+  const weights = normalisePriorityWeights(constraints.priorityWeights);
 
-  const w = constraints.priorityWeights;
+  const scored = filtered.map((material) => {
+    const thermal = norm(
+      material.max_service_temp_c,
+      Math.min(...temperatures),
+      Math.max(...temperatures)
+    );
+    const strength = norm(
+      material.tensile_strength_mpa,
+      Math.min(...strengths),
+      Math.max(...strengths)
+    );
+    const lightness =
+      1 -
+      norm(
+        material.density_g_cm3,
+        Math.min(...densities),
+        Math.max(...densities)
+      );
+    const costEfficiency = 1 - logNorm(material.cost_usd_kg, costs);
+    const corrosion = CORROSION_RANK[material.corrosion_resistance] / 4;
 
-  // Validate weights sum to 1.0, fix floating point drift
-  const wTotal = w.thermal + w.strength + w.weight + w.cost + w.corrosion;
-  const wNorm = wTotal > 0 ? wTotal : 1;
-  const wt = {
-    thermal: w.thermal / wNorm,
-    strength: w.strength / wNorm,
-    weight: w.weight / wNorm,
-    cost: w.cost / wNorm,
-    corrosion: w.corrosion / wNorm
-  };
+    const rawScore =
+      weights.thermal * thermal +
+      weights.strength * strength +
+      weights.weight * lightness +
+      weights.cost * costEfficiency +
+      weights.corrosion * corrosion;
 
-  const scored = filtered.map((m) => {
-    const thermal = norm(m.max_service_temp_c, minT, maxT);
-    const strength = norm(m.tensile_strength_mpa, minS, maxS);
-    const lightness = 1 - norm(m.density_g_cm3, minR, maxR);
-    const costEff = 1 - normLogCost(m.cost_usd_kg, costs);
-    const corrosion = CORROSION_RANK[m.corrosion_resistance] / 4;
+    const queryBonus = queryFitBonus(material, profile, filtered, constraints.rawQuery ?? "");
+    const confidencePenalty = material.data_source.startsWith("Materials Project API")
+      ? profile.wantsElectricalConductivity ||
+        profile.wantsElectricalInsulation ||
+        profile.wantsMachinability ||
+        profile.wantsHardness ||
+        profile.wantsBiocompatible ||
+        profile.wantsOutdoor ||
+        profile.wantsMarine ||
+        profile.wantsAcidResistance
+        ? 12
+        : 5
+      : 0;
+    const rankValue = rawScore * 100 + queryBonus - confidencePenalty;
 
-    // Weighted sum — guaranteed [0, 1] because each term is [0,1]
-    // and weights sum to 1.0
-    const raw =
-      wt.thermal * thermal +
-      wt.strength * strength +
-      wt.weight * lightness +
-      wt.cost * costEff +
-      wt.corrosion * corrosion;
-
-    // Scale to [0, 100] and round to integer
-    const score = Math.round(Math.min(100, Math.max(0, raw * 100)));
-
-    return { ...m, score, matchReason: buildReason(m, wt) };
+    return {
+      ...material,
+      rankValue,
+      score: Math.round(clampScore(rankValue)),
+      matchReason: buildReason(material, weights, profile)
+    };
   });
 
   return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
+    .sort((left, right) => right.rankValue - left.rankValue)
+    .slice(0, 10)
+    .map(({ rankValue: _rankValue, ...material }) => material);
 }

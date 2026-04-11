@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "fetch-materials": "node scripts/fetch-materials.mjs",
+    "process-materials": "node scripts/process-mp-data.mjs",
+    "update-db": "npm run fetch-materials && npm run process-materials",
+    "verify:recommendations": "node scripts/verify-recommendations.mjs",
+    "verify:novel-predictor": "node scripts/verify-novel-predictor.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

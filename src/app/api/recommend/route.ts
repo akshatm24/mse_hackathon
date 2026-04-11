@@ -6,45 +6,7 @@ import { retrieveRelevantMaterials } from "@/lib/rag";
 import { scoreMaterials } from "@/lib/scoring";
 import { RankedMaterial, UserConstraints } from "@/types";
 
-function normaliseWeights(
-  weights?: Partial<UserConstraints["priorityWeights"]>
-): UserConstraints["priorityWeights"] | undefined {
-  if (!weights) {
-    return undefined;
-  }
-
-  const merged = {
-    thermal: weights.thermal ?? 0,
-    strength: weights.strength ?? 0,
-    weight: weights.weight ?? 0,
-    cost: weights.cost ?? 0,
-    corrosion: weights.corrosion ?? 0
-  };
-  const total =
-    merged.thermal +
-    merged.strength +
-    merged.weight +
-    merged.cost +
-    merged.corrosion;
-
-  if (total <= 0) {
-    return {
-      thermal: 0.15,
-      strength: 0.3,
-      weight: 0.15,
-      cost: 0.3,
-      corrosion: 0.1
-    };
-  }
-
-  return {
-    thermal: merged.thermal / total,
-    strength: merged.strength / total,
-    weight: merged.weight / total,
-    cost: merged.cost / total,
-    corrosion: merged.corrosion / total
-  };
-}
+const ALLOWED_CATEGORIES = new Set(["Metal", "Polymer", "Ceramic", "Composite", "Solder"]);
 
 function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | undefined {
   if (!value || typeof value !== "object") {
@@ -74,6 +36,10 @@ function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | u
       typeof manual.electricallyConductive === "boolean"
         ? manual.electricallyConductive
         : undefined,
+    electricallyInsulating:
+      typeof manual.electricallyInsulating === "boolean"
+        ? manual.electricallyInsulating
+        : undefined,
     thermallyConductive:
       typeof manual.thermallyConductive === "boolean"
         ? manual.thermallyConductive
@@ -82,7 +48,17 @@ function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | u
       typeof manual.needsFDMPrintability === "boolean"
         ? manual.needsFDMPrintability
         : undefined,
-    priorityWeights: normaliseWeights(manual.priorityWeights)
+    preferredCategories: Array.isArray(manual.preferredCategories)
+      ? manual.preferredCategories.filter((entry): entry is NonNullable<UserConstraints["preferredCategories"]>[number] =>
+          typeof entry === "string" && ALLOWED_CATEGORIES.has(entry)
+        )
+      : undefined,
+    semanticTags: Array.isArray(manual.semanticTags)
+      ? manual.semanticTags.filter((entry): entry is string => typeof entry === "string")
+      : undefined,
+    priorityWeights: manual.priorityWeights
+      ? normalisePriorityWeights(manual.priorityWeights)
+      : undefined
   };
 }
 
@@ -103,10 +79,14 @@ function mergeConstraints(
     corrosionRequired: overrides.corrosionRequired ?? base.corrosionRequired,
     electricallyConductive:
       overrides.electricallyConductive ?? base.electricallyConductive,
+    electricallyInsulating:
+      overrides.electricallyInsulating ?? base.electricallyInsulating,
     thermallyConductive:
       overrides.thermallyConductive ?? base.thermallyConductive,
     needsFDMPrintability:
       overrides.needsFDMPrintability ?? base.needsFDMPrintability,
+    preferredCategories: overrides.preferredCategories ?? base.preferredCategories,
+    semanticTags: overrides.semanticTags ?? base.semanticTags,
     priorityWeights: overrides.priorityWeights ?? base.priorityWeights,
     rawQuery: overrides.rawQuery ?? base.rawQuery
   };
