@@ -349,7 +349,15 @@ export default function HomePage() {
             <div className="text-[10px] text-surface-700">
               42 materials · ASM Handbook · MatWeb · NASA TPSX
             </div>
-            <div className="text-[10px] text-surface-700">Built with Next.js + Gemini</div>
+            <div className="flex items-center gap-3 text-[10px] text-surface-700">
+              <span>Built with Next.js + Gemini</span>
+              <a
+                href="/api/recommend?query=lightweight%203D%20printable%20bracket%20for%2085%20degree%20motor%20heat"
+                className="text-brand transition hover:text-amber-300"
+              >
+                API sample
+              </a>
+            </div>
           </div>
         </footer>
       </main>
