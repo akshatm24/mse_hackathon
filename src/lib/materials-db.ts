@@ -2313,7 +2313,7 @@ function renameMaterialsProjectMaterial(material: Material, formula: string): Ma
   };
 }
 
-function dedupeMaterialsProjectMaterials(materials: Material[]): Material[] {
+function deduplicateMPMaterials(materials: Material[]): Material[] {
   const groups = new Map<string, Material>();
 
   for (const material of materials) {
@@ -2347,8 +2347,9 @@ const curatedWithMetadata = curatedMaterials.map((material) => ({
   source_kind: material.source_kind ?? ("curated" as const)
 }));
 
-const cleanedMpMaterials = dedupeMaterialsProjectMaterials(mpMaterialsGenerated);
+const cleanedMpMaterials = deduplicateMPMaterials(mpMaterialsGenerated);
 
 export const materialsDB: Material[] = [...curatedWithMetadata, ...cleanedMpMaterials];
+export const materialCount = materialsDB.length;
 
 export default materialsDB;

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { generateExplanation, extractConstraints } from "@/lib/gemini";
-import materialsDB from "@/lib/materials-db";
-import { retrieveRelevantMaterials } from "@/lib/rag";
+import { extractConstraints, generateExplanation } from "@/lib/gemini";
+import { materialsDB } from "@/lib/materials-db";
+import { retrieveFromCandidates } from "@/lib/rag";
 import { scoreMaterials } from "@/lib/scoring";
-import { RankedMaterial, UserConstraints } from "@/types";
+import type { UserConstraints } from "@/types";
 
 function normaliseWeights(
   weights?: Partial<UserConstraints["priorityWeights"]>
@@ -28,13 +28,7 @@ function normaliseWeights(
     merged.corrosion;
 
   if (total <= 0) {
-    return {
-      thermal: 0.15,
-      strength: 0.3,
-      weight: 0.15,
-      cost: 0.3,
-      corrosion: 0.1
-    };
+    return undefined;
   }
 
   return {
@@ -121,31 +115,29 @@ async function buildRecommendationResponse({
   history?: { role: string; parts: string }[];
   manualConstraints?: Partial<UserConstraints>;
 }) {
+  // Step 1: extract intent and weights from the natural-language query.
   const constraints = await extractConstraints(query);
-  const mergedConstraints = mergeConstraints(
+  const effectiveConstraints = mergeConstraints(
     constraints,
     manualConstraints ? { ...manualConstraints, rawQuery: query } : undefined
   );
-  const rankedMaterials = scoreMaterials(mergedConstraints, materialsDB);
-  const topCandidateIds = rankedMaterials.slice(0, 10).map((material) => material.id);
-  const ragBaseMaterials = await retrieveRelevantMaterials(query, 8, topCandidateIds);
-  const rankedById = new Map(rankedMaterials.map((material) => [material.id, material]));
-  const ragMaterials = ragBaseMaterials
-    .map((material) => rankedById.get(material.id))
-    .filter(Boolean) as RankedMaterial[];
-  const explanationMaterials =
-    ragMaterials.length > 0 ? ragMaterials : rankedMaterials.slice(0, 8);
-  const llmExplanation = await generateExplanation(query, explanationMaterials, history);
+
+  // Step 2: score the entire database. This is the single source of truth.
+  const rankedMaterials = scoreMaterials(effectiveConstraints, materialsDB);
+
+  // Step 3: RAG only re-orders the scored shortlist for explanation context.
+  const ragContext = await retrieveFromCandidates(query, rankedMaterials.slice(0, 10), 5);
+
+  // Step 4: explain the same shortlisted materials the user can see below.
+  const llmExplanation = await generateExplanation(query, ragContext, history);
 
   return {
     rankedMaterials,
     llmExplanation,
-    inferredConstraints: mergedConstraints,
-    clarifications: process.env.GEMINI_API_KEY
-      ? "Constraints inferred from your description."
-      : "Constraints inferred from your description using local engineering heuristics.",
+    inferredConstraints: effectiveConstraints,
+    clarifications: "Constraints auto-detected from your query.",
     matchCount: rankedMaterials.length,
-    ragRetrieved: explanationMaterials.map((material) => material.name)
+    ragMaterials: ragContext.map((material) => material.name)
   };
 }
 
@@ -153,14 +145,15 @@ export async function GET(req: NextRequest) {
   try {
     const query = req.nextUrl.searchParams.get("query");
 
-    if (!query) {
+    if (!query || !query.trim()) {
       return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
 
-    const data = await buildRecommendationResponse({ query });
+    const data = await buildRecommendationResponse({ query: query.trim() });
     return NextResponse.json(data);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Internal server error";
+    const message = err instanceof Error ? err.message : "Error";
+    console.error("recommend error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -174,21 +167,21 @@ export async function POST(req: NextRequest) {
     };
 
     const { query, history } = body;
-    const manualConstraints = sanitiseManualConstraints(body.manualConstraints);
 
-    if (!query || typeof query !== "string") {
+    if (!query || typeof query !== "string" || !query.trim()) {
       return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
 
     const data = await buildRecommendationResponse({
-      query,
+      query: query.trim(),
       history,
-      manualConstraints
+      manualConstraints: sanitiseManualConstraints(body.manualConstraints)
     });
 
     return NextResponse.json(data);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Internal server error";
+    const message = err instanceof Error ? err.message : "Error";
+    console.error("recommend error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

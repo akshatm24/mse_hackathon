@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { retrieveRelevantMaterials } from "@/lib/rag";
 import { materialsDB } from "@/lib/materials-db";
+import { searchDatabase } from "@/lib/rag";
 import type { Material } from "@/types";
 
 function normaliseFormula(value: string): string {
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     }
 
     const exact = exactFormulaMatch(formula);
-    const retrieved = await retrieveRelevantMaterials(`${formula}. ${context}`, 5);
+    const retrieved = await searchDatabase(`${formula}. ${context}`, materialsDB, 5);
     const winner = exact ?? retrieved[0] ?? null;
 
     if (!winner) {

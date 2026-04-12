@@ -3,11 +3,17 @@
 import { useMemo, useState } from "react";
 
 type WeightKey = "strength" | "thermal" | "weight" | "cost" | "corrosion";
+type WeightState = Record<WeightKey, number>;
 
 interface QueryFormProps {
   onSubmit: (query: string, manualConstraints?: object) => void;
   loading: boolean;
   apiAvailable: boolean;
+  weights: WeightState;
+  weightsAutoDetected: boolean;
+  hasManualWeightOverride: boolean;
+  onWeightsChange: (weights: WeightState) => void;
+  onManualWeightOverride: () => void;
 }
 
 const propertyMeta: Array<{
@@ -37,18 +43,16 @@ function toPercent(value: number) {
 export default function QueryForm({
   onSubmit,
   loading,
-  apiAvailable
+  apiAvailable,
+  weights,
+  weightsAutoDetected,
+  hasManualWeightOverride,
+  onWeightsChange,
+  onManualWeightOverride
 }: QueryFormProps) {
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [openWeight, setOpenWeight] = useState<WeightKey | null>(null);
-  const [weights, setWeights] = useState<Record<WeightKey, number>>({
-    strength: 0.3,
-    thermal: 0.15,
-    weight: 0.15,
-    cost: 0.3,
-    corrosion: 0.1
-  });
   const [maxTemp, setMaxTemp] = useState("");
   const [minTensile, setMinTensile] = useState("");
   const [maxDensity, setMaxDensity] = useState("");
@@ -93,33 +97,31 @@ export default function QueryForm({
     }
   }
 
-  function normalise(nextWeights: Record<WeightKey, number>) {
+  function normalise(nextWeights: WeightState) {
     const total = Object.values(nextWeights).reduce((sum, value) => sum + value, 0);
     return Object.fromEntries(
       Object.entries(nextWeights).map(([key, value]) => [key, value / total])
-    ) as Record<WeightKey, number>;
+    ) as WeightState;
   }
 
   function updateWeight(targetKey: WeightKey, nextValue: number) {
-    setWeights((current) => {
-      const clamped = clamp(nextValue, 0.05, 0.8);
-      const otherKeys = propertyMeta
-        .map((item) => item.key)
-        .filter((key) => key !== targetKey);
-      const remaining = 1 - clamped;
-      const currentOtherTotal = otherKeys.reduce((sum, key) => sum + current[key], 0);
+    const clamped = clamp(nextValue, 0.05, 0.8);
+    const otherKeys = propertyMeta
+      .map((item) => item.key)
+      .filter((key) => key !== targetKey);
+    const remaining = 1 - clamped;
+    const currentOtherTotal = otherKeys.reduce((sum, key) => sum + weights[key], 0);
+    const nextWeights = { ...weights, [targetKey]: clamped };
 
-      const nextWeights = { ...current, [targetKey]: clamped };
-
-      otherKeys.forEach((key) => {
-        nextWeights[key] =
-          currentOtherTotal === 0
-            ? remaining / otherKeys.length
-            : (current[key] / currentOtherTotal) * remaining;
-      });
-
-      return normalise(nextWeights);
+    otherKeys.forEach((key) => {
+      nextWeights[key] =
+        currentOtherTotal === 0
+          ? remaining / otherKeys.length
+          : (weights[key] / currentOtherTotal) * remaining;
     });
+
+    onManualWeightOverride();
+    onWeightsChange(normalise(nextWeights));
   }
 
   function parseNumber(value: string) {
@@ -133,7 +135,7 @@ export default function QueryForm({
   function handleSubmit() {
     const trimmed = query.trim();
     const hasManual =
-      maxTemp || minTensile || maxDensity || maxCost || needsFDM;
+      maxTemp || minTensile || maxDensity || maxCost || needsFDM || hasManualWeightOverride;
 
     if ((!trimmed && !hasManual) || loading) {
       return;
@@ -146,7 +148,7 @@ export default function QueryForm({
       maxDensity_g_cm3: parseNumber(maxDensity),
       maxCost_usd_kg: parseNumber(maxCost),
       needsFDMPrintability: needsFDM || undefined,
-      priorityWeights: weights
+      priorityWeights: hasManualWeightOverride ? weights : undefined
     });
   }
 
@@ -270,7 +272,14 @@ export default function QueryForm({
 
         <div className="border-t border-surface-800 px-[18px] py-3">
           <div className="flex items-start gap-3">
-            <span className="pt-1 text-[11px] text-surface-600">Weights:</span>
+            <div className="flex min-w-[120px] items-center gap-2 pt-1">
+              <span className="text-[11px] text-surface-600">Weights:</span>
+              {weightsAutoDetected ? (
+                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-medium text-brand">
+                  Auto-detected from query
+                </span>
+              ) : null}
+            </div>
             <div className="grid flex-1 gap-3 md:grid-cols-5">
               {propertyMeta.map((item) => (
                 <div key={item.key} className="relative flex flex-col items-center gap-1.5">

@@ -64,5 +64,5 @@ export interface RecommendResponse {
   inferredConstraints: UserConstraints;
   clarifications: string;
   matchCount?: number;
-  ragRetrieved?: string[];
+  ragMaterials?: string[];
 }

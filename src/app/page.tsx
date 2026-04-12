@@ -8,40 +8,26 @@ import Header from "@/components/Header";
 import NovelAlloyPredictor from "@/components/NovelAlloyPredictor";
 import QueryForm from "@/components/QueryForm";
 import ResultsPanel from "@/components/ResultsPanel";
-import materialsDB from "@/lib/materials-db";
+import { materialCount } from "@/lib/materials-db";
 import type { RecommendResponse, UserConstraints } from "@/types";
 
-function buildLoadingSteps(query: string, manualConstraints?: Partial<UserConstraints>) {
-  const steps = ["Extracting constraints..."];
-  const tempMatch = query.match(/(\d{2,4})\s*°?\s*c/i);
+type WeightState = UserConstraints["priorityWeights"];
 
-  if (tempMatch) {
-    steps.push(`✓ Max temperature: ${tempMatch[1]}°C`);
-  }
-  if (
-    query.toLowerCase().includes("3d print") ||
-    query.toLowerCase().includes("fdm") ||
-    manualConstraints?.needsFDMPrintability
-  ) {
-    steps.push("✓ FDM printable: yes");
-  }
-  if (manualConstraints?.maxDensity_g_cm3) {
-    steps.push(`✓ Max density: ${manualConstraints.maxDensity_g_cm3} g/cm³`);
-  }
+const DEFAULT_WEIGHTS: WeightState = {
+  strength: 0.3,
+  thermal: 0.15,
+  weight: 0.15,
+  cost: 0.3,
+  corrosion: 0.1
+};
 
-  const weights = manualConstraints?.priorityWeights;
-  if (weights) {
-    const priority = Object.entries(weights)
-      .sort(([, left], [, right]) => (right ?? 0) - (left ?? 0))
-      .slice(0, 3)
-      .map(([key, value]) => `${key} (${Math.round((value ?? 0) * 100)}%)`)
-      .join(" > ");
-    steps.push(`✓ Priority: ${priority}`);
-  }
-
-  steps.push(`Scoring ${materialsDB.length} materials...`);
-  steps.push("Ranking top candidates...");
-  return steps;
+function buildLoadingSteps(totalMaterials: number) {
+  return [
+    "Interpreting your query...",
+    `Scoring ${totalMaterials} materials...`,
+    "Retrieving best candidates...",
+    "Generating explanation..."
+  ];
 }
 
 export default function HomePage() {
@@ -54,23 +40,30 @@ export default function HomePage() {
     Partial<UserConstraints> | undefined
   >(undefined);
   const [searchDurationMs, setSearchDurationMs] = useState(0);
-  const [visibleLoadingStep, setVisibleLoadingStep] = useState(1);
+  const [loadingStepIndex, setLoadingStepIndex] = useState(0);
   const [summaryBarVisible, setSummaryBarVisible] = useState(false);
+  const [weights, setWeights] = useState<WeightState>(DEFAULT_WEIGHTS);
+  const [weightsAutoDetected, setWeightsAutoDetected] = useState(false);
+  const [hasManualWeightOverride, setHasManualWeightOverride] = useState(false);
   const querySectionRef = useRef<HTMLElement | null>(null);
-  const materialCount = materialsDB.length;
+
+  const loadingSteps = buildLoadingSteps(materialCount);
 
   useEffect(() => {
     if (!loading) {
-      setVisibleLoadingStep(1);
+      setLoadingStepIndex(0);
       return;
     }
 
+    setLoadingStepIndex(0);
     const interval = window.setInterval(() => {
-      setVisibleLoadingStep((current) => current + 1);
-    }, 380);
+      setLoadingStepIndex((current) =>
+        current < loadingSteps.length - 1 ? current + 1 : current
+      );
+    }, 200);
 
     return () => window.clearInterval(interval);
-  }, [loading]);
+  }, [loading, loadingSteps.length]);
 
   useEffect(() => {
     function onScroll() {
@@ -85,8 +78,21 @@ export default function HomePage() {
 
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
+
     return () => window.removeEventListener("scroll", onScroll);
   }, [results]);
+
+  function applyInferredWeights(nextWeights: WeightState) {
+    setWeights({
+      strength: Math.round(nextWeights.strength * 100) / 100,
+      thermal: Math.round(nextWeights.thermal * 100) / 100,
+      weight: Math.round(nextWeights.weight * 100) / 100,
+      cost: Math.round(nextWeights.cost * 100) / 100,
+      corrosion: Math.round(nextWeights.corrosion * 100) / 100
+    });
+    setWeightsAutoDetected(true);
+    setHasManualWeightOverride(false);
+  }
 
   async function handleSubmit(query: string, manualConstraints?: object) {
     const manual = manualConstraints as Partial<UserConstraints> | undefined;
@@ -106,28 +112,27 @@ export default function HomePage() {
         body: JSON.stringify({ query, manualConstraints: manual })
       });
 
-      if (response.status === 503) {
-        setApiAvailable(false);
-        throw new Error("The recommendation service did not respond.");
-      }
-
       const data = (await response.json()) as RecommendResponse & { error?: string };
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Something went wrong");
+        throw new Error(data.error ?? "Something went wrong. Please try again.");
       }
 
       setApiAvailable(true);
+      if (data.inferredConstraints?.priorityWeights) {
+        applyInferredWeights(data.inferredConstraints.priorityWeights);
+      }
+
       startTransition(() => setResults(data));
       setSearchDurationMs(performance.now() - started);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      setApiAvailable(!/not configured/i.test(message));
+      setError(message);
     } finally {
       setLoading(false);
     }
   }
-
-  const loadingSteps = buildLoadingSteps(lastQuery, lastManualConstraints);
 
   return (
     <>
@@ -190,6 +195,14 @@ export default function HomePage() {
             onSubmit={handleSubmit}
             loading={loading}
             apiAvailable={apiAvailable}
+            weights={weights}
+            weightsAutoDetected={weightsAutoDetected}
+            hasManualWeightOverride={hasManualWeightOverride}
+            onWeightsChange={setWeights}
+            onManualWeightOverride={() => {
+              setWeightsAutoDetected(false);
+              setHasManualWeightOverride(true);
+            }}
           />
         </section>
 
@@ -200,16 +213,7 @@ export default function HomePage() {
                 className="mr-2 inline-block h-2 w-2 rounded-full bg-brand"
                 style={{ animation: "pulse 2s ease-in-out infinite" }}
               />
-              Analysing constraints and searching {materialCount} materials...
-            </div>
-            <div className="mx-auto mb-6 max-w-[780px] rounded-xl border border-surface-800 bg-surface-900 px-4 py-3">
-              <div className="space-y-1.5 text-left text-[12px] text-surface-400">
-                {loadingSteps.slice(0, visibleLoadingStep).map((step) => (
-                  <div key={step} className="fade-slide-up">
-                    {step}
-                  </div>
-                ))}
-              </div>
+              ● {loadingSteps[loadingStepIndex]}
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               {[0, 1, 2].map((card) => (

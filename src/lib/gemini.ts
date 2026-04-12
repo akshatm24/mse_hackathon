@@ -34,6 +34,33 @@ function normaliseWeights(
   };
 }
 
+function validateAndCorrectWeights(
+  constraints: UserConstraints
+): UserConstraints {
+  const weights = constraints.priorityWeights;
+  const maxWeight = Math.max(...Object.values(weights));
+  const isBalanced = maxWeight < 0.3;
+
+  // If Gemini returns overly flat weights, fall back to the stronger
+  // heuristic signal so obvious intents like "cheap" or "marine" still
+  // produce intuitive rankings.
+  if (!isBalanced) {
+    return constraints;
+  }
+
+  const heuristic = heuristicExtract(constraints.rawQuery ?? "");
+  const heuristicMax = Math.max(...Object.values(heuristic.priorityWeights));
+
+  if (heuristicMax > maxWeight) {
+    return {
+      ...constraints,
+      priorityWeights: heuristic.priorityWeights
+    };
+  }
+
+  return constraints;
+}
+
 function generateLocalExplanation(
   query: string,
   ranked: RankedMaterial[]
@@ -50,7 +77,7 @@ function generateLocalExplanation(
   const third = ranked[2];
 
   const para1 =
-    `Based on your requirements, ${top.name} is the recommended material with a ` +
+    `Based on your query, the top recommendation is ${top.name} with a ` +
     `match score of ${top.score}/100. ` +
     `It offers a maximum service temperature of ${top.max_service_temp_c}°C, ` +
     `tensile strength of ${top.tensile_strength_mpa} MPa, density of ` +
@@ -480,11 +507,12 @@ User: ${query}`;
         corrosion: 0.1
       }
     );
-    return { ...parsed, rawQuery: query } as UserConstraints;
+    return validateAndCorrectWeights({
+      ...parsed,
+      rawQuery: query
+    } as UserConstraints);
   } catch {
-    // Gemini failed (quota, parse error, etc.)
-    // Fall back to heuristic — always returns sensible results
-    return heuristicExtract(query);
+    return validateAndCorrectWeights(heuristicExtract(query));
   }
 }
 
@@ -493,7 +521,13 @@ export async function generateExplanation(
   ranked: RankedMaterial[],
   history?: { role: string; parts: string }[]
 ): Promise<string> {
+  const localFallback = generateLocalExplanation(query, ranked);
+
   try {
+    if (!process.env.GEMINI_API_KEY) {
+      return localFallback;
+    }
+
     const genAI = getClient();
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash"
@@ -515,6 +549,8 @@ export async function generateExplanation(
       `You are a virtual materials scientist advising an engineer.\n` +
       `Problem: "${query}"\nRanked candidates:\n${ctx}\n\n` +
       `Write exactly 3 paragraphs with NO bullet points:\n` +
+      `Begin your first paragraph with: "Based on your query, the top recommendation is [MATERIAL NAME]..."\n` +
+      `Reference materials by exact name throughout. Do not use vague phrases like "the selected material".\n` +
       `1. Why #1 is recommended — cite specific property values.\n` +
       `2. Compare #1 vs #2 vs #3 — when would each be preferred?\n` +
       `3. Important caveats the engineer must know before ordering.`;
@@ -528,8 +564,6 @@ export async function generateExplanation(
     const res = await chat.sendMessage(prompt);
     return res.response.text();
   } catch {
-    // If the remote model does not return, explain the shortlist locally
-    // using the ranked materials data we already have.
-    return generateLocalExplanation(query, ranked);
+    return localFallback;
   }
 }
