@@ -1,133 +1,149 @@
-# Smart Alloy Selector – MET-QUEST'26
+# Smart Alloy Selector
 
-## What it does
+Smart Alloy Selector is a Next.js materials recommendation app built for `MET-QUEST'26` Problem Statement 3. It converts plain-English engineering requirements into ranked material recommendations, shortlist-grounded explanations, and rule-of-mixtures estimates for novel compositions.
 
-Smart Alloy Selector is an AI-assisted engineering material recommendation tool built for MET-QUEST'26. A user describes a mechanical, thermal, electrical, corrosion, or manufacturing problem in plain English, the system extracts constraints, filters a curated 65-material database, and ranks the best candidates with a deterministic weighted scoring engine. The app also supports follow-up questions, side-by-side comparison, and a searchable database explorer.
+Live URL: [https://beautiful-tiramisu-211a94.netlify.app](https://beautiful-tiramisu-211a94.netlify.app)
+Repository: [https://github.com/akshatm24/mse_hackathon](https://github.com/akshatm24/mse_hackathon)
 
-## Tech stack
+Team:
 
-- Next.js 14 App Router
-- TypeScript
-- Tailwind CSS
-- Recharts
-- Google Gemini (`@google/generative-ai`)
-- Lucide React icons
+- Akshat Mittal
+- Harshit Dashore
+- Aaditya Mukherjee
 
-## Local setup
+## Current Database Snapshot
 
-1. Clone the repository and open the project folder.
-2. Install dependencies:
+The current assembled runtime database contains `7,116` searchable materials.
+
+- Preserved baseline entries from this checkout: `655`
+- Added Materials Project entries: `5,690`
+- Added scraped entries: `758`
+- Added hardcoded cited entries: `13`
+
+Category distribution:
+
+- `4,716` metals
+- `214` polymers
+- `2,114` ceramics
+- `43` composites
+- `29` solders
+
+Data quality distribution:
+
+- `655` experimental / curated
+- `13` hardcoded cited
+- `758` scraped
+- `3,348` estimated
+- `2,342` MP-calculated
+
+## Recommendation Pipeline
+
+Each recommendation request follows one deterministic pipeline:
+
+1. The query is parsed into structured constraints with Gemini plus a local heuristic fallback.
+2. Domain intent adds category gates for cases like soldering, FDM printing, biomedical use, cryogenic service, or heat sinks.
+3. The database is hard-filtered and scored with null-safe ranking.
+4. A shortlist-only RAG helper chooses explanation context from the scored candidates.
+5. The API returns the ranked cards, warnings, inferred constraints, and explanation.
+
+The ranking layer now includes:
+
+- null-safe scoring for missing properties
+- negation handling such as `cost not important`, `no ceramics`, and `not magnetic`
+- cryogenic and biomedical shortlists
+- category hard constraints for soldering, FDM, insulation, and heat-sink queries
+- rule-of-mixtures prediction for novel typed compositions such as `Fe-18Cr-8Ni`
+
+## Data Sources
+
+The assembled database merges curated references, web pipelines, and cited source files.
+
+Primary source families:
+
+- Materials Project API: [https://api.materialsproject.org](https://api.materialsproject.org)
+- EngineeringToolbox tables: [https://www.engineeringtoolbox.com](https://www.engineeringtoolbox.com)
+- Wikipedia property tables: [https://www.wikipedia.org](https://www.wikipedia.org)
+- Haynes alloy pages: [https://www.haynes.com/en-us/alloys](https://www.haynes.com/en-us/alloys)
+- Special Metals technical bulletins: [https://www.specialmetals.com/documents/technical-bulletins/](https://www.specialmetals.com/documents/technical-bulletins/)
+- Carpenter Technology alloy pages: [https://www.carpentertechnology.com/alloy-tech-center](https://www.carpentertechnology.com/alloy-tech-center)
+- NIST WebBook: [https://webbook.nist.gov](https://webbook.nist.gov)
+- ASM / datasheet-backed curated entries used for handbook-grade materials and hardcoded cited additions
+
+Pipeline connectors also exist for AZoM and MatWeb. Those stages are treated as best-effort because site structure, robots rules, and rate limits can change.
+
+## Running Locally
 
 ```bash
 npm install
-```
-
-3. Create a local environment file:
-
-```bash
 cp .env.example .env.local
-```
-
-4. Add your Gemini API key:
-
-```bash
-GEMINI_API_KEY=your_real_gemini_api_key
-```
-
-5. Start the development server:
-
-```bash
 npm run dev
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-Notes:
-- `.env.local` is ignored by git and should never be committed.
-- If the Gemini key is missing, the UI still works using local heuristic extraction and deterministic ranking.
-
-## Vercel deployment
-
-1. Push the repository to GitHub.
-2. Import the repo into Vercel.
-3. Add the environment variable `GEMINI_API_KEY` in the Vercel project settings.
-4. Redeploy the project.
-5. Confirm the homepage and `POST /api/recommend` return successful responses.
-
-CLI workflow:
+## Environment Variables
 
 ```bash
-vercel --yes --env GEMINI_API_KEY=your_real_key --build-env GEMINI_API_KEY=your_real_key --prod
+GEMINI_API_KEY=your_gemini_api_key_here
+MATERIALS_PROJECT_API_KEY=your_mp_api_key_here
 ```
 
-## Why not GitHub Pages
+Security notes:
 
-GitHub Pages is designed for static hosting. This project needs a server-side API route for Gemini calls, runtime environment variables, and server execution during recommendation requests. Vercel supports the required Next.js App Router server features out of the box.
+- keep real secrets in `.env.local` or Netlify only
+- never commit `.env.local`
+- rotate any key that was exposed outside local development
 
-## Materials database
+## Running The Data Pipeline
 
-- 65 curated materials
-- 5 categories: Metal, Polymer, Ceramic, Composite, Solder
-- 18 core properties per material
-- Sources include ASM Handbook, MatWeb, NASA TPSX, supplier datasheets, and manufacturer technical references
+The data pipeline is split into explicit stages so fetch, cleanup, and assembly can be rerun independently.
 
-The embedded dataset includes:
-- Structural metals such as stainless steels, titanium alloys, aluminum alloys, nickel alloys, and tool steels
-- Printable and high-performance polymers such as PLA, ABS, PETG, PA12, PEEK, Ultem, PTFE, and Delrin
-- Ceramics including alumina, zirconia, silicon carbide, silicon nitride, and boron nitride
-- Composites including CFRP, GFRP, Kevlar/epoxy, and carbon-carbon
-- Electronics joining materials including eutectic tin-lead, SAC305, AuSn20, and silver braze
-
-## Scoring methodology
-
-The ranking has two stages:
-
-1. Hard filters
-   - Minimum service temperature
-   - Minimum tensile strength
-   - Maximum density
-   - Maximum cost
-   - Minimum corrosion requirement
-   - Electrical conductivity requirement
-   - FDM printability requirement
-
-2. Weighted sum scoring
-
-For each surviving material:
-
-```text
-score = 100 * (
-  w_thermal   * normalized_thermal +
-  w_strength  * normalized_strength +
-  w_weight    * normalized_lightness +
-  w_cost      * normalized_cost_efficiency +
-  w_corrosion * normalized_corrosion
-)
+```bash
+npm run fetch-mp
+npm run process-mp
+npm run scrape:all
+npm run assemble-db
 ```
 
-Where:
-- `normalized_thermal = material.max_service_temp / max(max_service_temp)`
-- `normalized_strength = material.tensile_strength / max(tensile_strength)`
-- `normalized_lightness = 1 - material.density / max(density)`
-- `normalized_cost_efficiency = 1 - material.cost / max(cost)`
-- `normalized_corrosion = corrosion_rank / 4`
+Convenience commands:
 
-The engine returns the top 10 materials after sorting by descending score.
+- `npm run update-db-mp`: fetch + process Materials Project data
+- `npm run build-db`: fetch MP data, run scrapers, and assemble the final database
 
-## Graceful degradation
+Key generated artifacts:
 
-If Gemini is unavailable or `GEMINI_API_KEY` is not configured:
+- `scripts/mp-materials-raw.json`
+- `scripts/mp-processed.json`
+- `scripts/scraped-materials-merged.json`
+- `scripts/hardcoded-materials.json`
+- `src/lib/materials-db.json`
 
-- the app falls back to local keyword-based constraint inference
-- deterministic scoring still works against the embedded database
-- the UI remains fully usable for search, comparison, and database exploration
+## Evaluation And Verification
 
-This keeps the tool functional during demos, local development, or API outages.
+```bash
+npm run eval:recommend
+npm run eval:predict
+npm run eval:full
+npx tsc --noEmit
+npm run build
+```
 
-## Limitations and future work
+Artifacts are written to `reports/`.
 
-- The current dataset is curated rather than exhaustive
-- The scoring model does not yet include fatigue life, creep, fracture toughness, or joining compatibility
-- Numeric properties are literature-typical values and should be validated for a specific grade, temper, supplier, or processing route
-- The chatbot currently answers from ranked results rather than a full retrieval pipeline over raw datasheets
-- Future work could add Ashby plots, composition-based property prediction, exportable reports, and deeper manufacturing process recommendations
+## Key Files
+
+- `src/lib/materials-db.json`: assembled runtime database
+- `src/lib/scoring.ts`: deterministic ranking, intent parsing, and shortlist bonuses
+- `src/lib/gemini.ts`: structured constraint extraction and local fallback logic
+- `src/app/api/recommend/route.ts`: recommendation endpoint
+- `src/app/api/predict/route.ts`: novel-alloy predictor endpoint
+- `scripts/fetch-mp.mjs`: paginated Materials Project fetch
+- `scripts/process-mp.mjs`: MP-to-runtime normalization and enrichment
+- `scripts/scrape/run-all.mjs`: scraper orchestrator
+- `scripts/assemble-db.mjs`: final merge and deduplication stage
+
+## Limitations
+
+- Many MP-derived rows are screening-grade estimates rather than certified datasheet values.
+- Scraped and hardcoded cited rows still contain nulls where a trustworthy value was not available.
+- Novel composition prediction is a composition-only estimate and does not replace CALPHAD, heat-treatment data, or experimental validation.

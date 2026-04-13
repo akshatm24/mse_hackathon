@@ -7,6 +7,7 @@ import ChatInterface from "@/components/ChatInterface";
 import ComparisonTable from "@/components/ComparisonTable";
 import MaterialCard from "@/components/MaterialCard";
 import PropertyRadarChart from "@/components/PropertyRadarChart";
+import { formatNullable, sourceBadge } from "@/lib/material-display";
 import { RecommendResponse } from "@/types";
 
 interface ResultsPanelProps {
@@ -86,6 +87,23 @@ export default function ResultsPanel({
             <p key={paragraph}>{paragraph}</p>
           ))}
         </div>
+        {data.warnings && data.warnings.length > 0 ? (
+          <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-3">
+            <div className="text-[10px] uppercase tracking-[0.08em] text-brand">
+              Recommendation Warnings
+            </div>
+            <div className="mt-2 space-y-2 text-[12px] leading-[1.6] text-amber-100">
+              {data.warnings.map((warning) => (
+                <p
+                  key={warning}
+                  className="rounded-lg border border-amber-500/15 bg-amber-500/10 px-3 py-2"
+                >
+                  {warning}
+                </p>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="mx-auto flex max-w-[1200px] items-end justify-between gap-4 px-4">
@@ -149,6 +167,7 @@ export default function ResultsPanel({
               <tr>
                 <th className="py-3">Material</th>
                 <th className="py-3">Category</th>
+                <th className="py-3">Source</th>
                 <th className="py-3">Score</th>
                 <th className="py-3">Max Temp</th>
                 <th className="py-3">Density</th>
@@ -161,10 +180,11 @@ export default function ResultsPanel({
                 <tr key={material.id} className="border-b border-surface-800/60 text-[12px]">
                   <td className="py-3 font-medium text-zinc-100">{material.name}</td>
                   <td className="py-3 text-surface-400">{material.category}</td>
+                  <td className="py-3 text-surface-400">{sourceBadge(material)}</td>
                   <td className="py-3 font-mono text-brand">{material.score}</td>
-                  <td className="py-3 font-mono text-surface-400">{material.max_service_temp_c}°C</td>
-                  <td className="py-3 font-mono text-surface-400">{material.density_g_cm3.toFixed(2)}</td>
-                  <td className="py-3 font-mono text-surface-400">${material.cost_usd_kg.toFixed(2)}</td>
+                  <td className="py-3 font-mono text-surface-400">{formatNullable(material.max_service_temp_c, { suffix: "°C" })}</td>
+                  <td className="py-3 font-mono text-surface-400">{formatNullable(material.density_g_cm3, { digits: 2 })}</td>
+                  <td className="py-3 font-mono text-surface-400">{formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$" })}</td>
                   <td className="py-3">
                     <input
                       type="checkbox"

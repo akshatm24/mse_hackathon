@@ -3,6 +3,7 @@
 import { Check, Clipboard } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { dataQualityLabel, formatNullable, sourceBadge } from "@/lib/material-display";
 import { RankedMaterial } from "@/types";
 
 interface MaterialCardProps {
@@ -12,13 +13,6 @@ interface MaterialCardProps {
   onToggle: () => void;
   compareDisabled?: boolean;
   staggerIndex?: number;
-}
-
-function formatNumber(value: number, digits = 0) {
-  return value.toLocaleString(undefined, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits
-  });
 }
 
 function categoryTone(category: RankedMaterial["category"]) {
@@ -57,7 +51,10 @@ function scoreTone(score: number) {
   return "#34D399";
 }
 
-function costTone(cost: number) {
+function costTone(cost: number | null) {
+  if (cost === null) {
+    return "#A1A1AA";
+  }
   if (cost < 10) {
     return "#34D399";
   }
@@ -104,7 +101,7 @@ export default function MaterialCard({
   async function copySummary() {
     try {
       await navigator.clipboard.writeText(
-        `Material: ${material.name} | Score: ${material.score}/100 | Max Temp: ${material.max_service_temp_c}°C | Density: ${material.density_g_cm3} g/cm³ | Cost: $${material.cost_usd_kg}/kg`
+        `Material: ${material.name} | Score: ${material.score}/100 | Max Temp: ${formatNullable(material.max_service_temp_c, { suffix: "°C" })} | Density: ${formatNullable(material.density_g_cm3, { digits: 2, suffix: " g/cm³" })} | Cost: ${formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$", suffix: "/kg" })}`
       );
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
@@ -115,33 +112,34 @@ export default function MaterialCard({
 
   const properties = [
     ["Subcategory", material.subcategory],
-    ["Yield Strength", `${formatNumber(material.yield_strength_mpa)} MPa`],
-    ["Elastic Modulus", `${formatNumber(material.elastic_modulus_gpa, 1)} GPa`],
+    ["Yield Strength", formatNullable(material.yield_strength_mpa, { suffix: " MPa" })],
+    ["Elastic Modulus", formatNullable(material.elastic_modulus_gpa, { digits: 1, suffix: " GPa" })],
     ["Hardness", material.hardness_vickers === null ? "—" : `${material.hardness_vickers} HV`],
     [
       "Thermal Conductivity",
-      `${formatNumber(material.thermal_conductivity_w_mk, 2)} W/m·K`
+      formatNullable(material.thermal_conductivity_w_mk, { digits: 2, suffix: " W/m·K" })
     ],
-    ["Specific Heat", `${formatNumber(material.specific_heat_j_gk, 2)} J/g·K`],
+    ["Specific Heat", formatNullable(material.specific_heat_j_gk, { digits: 2, suffix: " J/g·K" })],
     [
       "Melting Point",
-      material.melting_point_c === null ? "—" : `${material.melting_point_c}°C`
+      formatNullable(material.melting_point_c, { suffix: "°C" })
     ],
     [
       "Glass Transition",
-      material.glass_transition_c === null ? "—" : `${material.glass_transition_c}°C`
+      formatNullable(material.glass_transition_c, { suffix: "°C" })
     ],
     [
       "Thermal Expansion",
-      `${formatNumber(material.thermal_expansion_ppm_k, 1)} ppm/K`
+      formatNullable(material.thermal_expansion_ppm_k, { digits: 1, suffix: " ppm/K" })
     ],
     [
       "Resistivity",
-      `${material.electrical_resistivity_ohm_m.toExponential(2)} Ω·m`
+      formatNullable(material.electrical_resistivity_ohm_m, { digits: 2, scientific: true, suffix: " Ω·m" })
     ],
-    ["Corrosion", material.corrosion_resistance],
+    ["Corrosion", material.corrosion_resistance ?? "—"],
     ["Machinability", material.machinability],
-    ["FDM Printability", material.printability_fdm]
+    ["FDM Printability", material.printability_fdm],
+    ["Data Quality", dataQualityLabel(material)]
   ];
 
   return (
@@ -163,11 +161,16 @@ export default function MaterialCard({
             #{rank}
           </span>
           <h3 className="mt-1.5 text-[15px] font-semibold text-zinc-100">{material.name}</h3>
-          <span
-            className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] ${categoryTone(material.category)}`}
-          >
-            {material.category}
-          </span>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span
+              className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] ${categoryTone(material.category)}`}
+            >
+              {material.category}
+            </span>
+            <span className="inline-flex rounded-full border border-surface-700 bg-surface-800 px-2 py-0.5 text-[10px] text-surface-300">
+              {sourceBadge(material)}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-start gap-2">
@@ -216,20 +219,20 @@ export default function MaterialCard({
       >
         <div className="grid grid-cols-2 gap-1">
           {[
-            { label: "Max Temp", value: `${material.max_service_temp_c}°C`, color: "#F4F4F5" },
+            { label: "Max Temp", value: formatNullable(material.max_service_temp_c, { suffix: "°C" }), color: "#F4F4F5" },
             {
               label: "Density",
-              value: `${formatNumber(material.density_g_cm3, 2)} g/cm³`,
+              value: formatNullable(material.density_g_cm3, { digits: 2, suffix: " g/cm³" }),
               color: "#F4F4F5"
             },
             {
               label: "Tensile",
-              value: `${formatNumber(material.tensile_strength_mpa)} MPa`,
+              value: formatNullable(material.tensile_strength_mpa, { suffix: " MPa" }),
               color: "#F4F4F5"
             },
             {
               label: "Cost",
-              value: `$${formatNumber(material.cost_usd_kg, 2)}/kg`,
+              value: formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$", suffix: "/kg" }),
               color: costTone(material.cost_usd_kg)
             }
           ].map((property) => (
@@ -253,6 +256,18 @@ export default function MaterialCard({
         <div className="mt-2 rounded-md border-l-2 border-surface-800 bg-[#0C0A09] px-2 py-1.5 text-[11px] leading-[1.5] text-surface-600">
           {material.matchReason}
         </div>
+        {material.warnings && material.warnings.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {material.warnings.slice(0, 3).map((warning) => (
+              <span
+                key={warning}
+                className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-100"
+              >
+                {warning}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </button>
 
       <div
@@ -295,6 +310,19 @@ export default function MaterialCard({
               {material.matchReason}
             </p>
           </div>
+
+          {material.warnings && material.warnings.length > 0 ? (
+            <div className="mt-3 rounded-md border-l-2 border-amber-500 bg-[#1A1207] px-2 py-2">
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-amber-300">
+                Watchouts
+              </div>
+              <div className="mt-1 space-y-1 text-[11px] leading-[1.5] text-amber-100">
+                {material.warnings.map((warning) => (
+                  <p key={warning}>{warning}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             {material.tags.map((tag) => (

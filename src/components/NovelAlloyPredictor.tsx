@@ -3,13 +3,8 @@
 import { Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 
-import type { Material } from "@/types";
-
-type PredictionPayload = {
-  winner: Material;
-  alternatives: Material[];
-  explanation: string;
-};
+import { formatNullable } from "@/lib/material-display";
+import type { Material, PredictorResponse } from "@/types";
 
 function categoryTone(category: Material["category"]) {
   if (category === "Metal") {
@@ -32,7 +27,7 @@ export default function NovelAlloyPredictor() {
   const [context, setContext] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<PredictionPayload | null>(null);
+  const [result, setResult] = useState<PredictorResponse | null>(null);
 
   async function handlePredict() {
     if (!formula.trim() || loading) {
@@ -54,7 +49,7 @@ export default function NovelAlloyPredictor() {
         })
       });
 
-      const payload = (await response.json()) as PredictionPayload & { error?: string };
+      const payload = (await response.json()) as PredictorResponse & { error?: string };
       if (!response.ok) {
         throw new Error(payload.error ?? "Prediction failed");
       }
@@ -84,12 +79,13 @@ export default function NovelAlloyPredictor() {
           <p className="mt-1 max-w-2xl text-[13px] leading-[1.7] text-zinc-500">
             Enter a formula or candidate composition and the app will surface the closest
             known engineering analogue from the expanded curated + Materials Project
-            database.
+            database, with exact-match detection and screening-level composition estimates
+            when possible.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[11px] text-brand">
           <Sparkles className="h-3.5 w-3.5" />
-          Semantic analogue lookup
+          Hybrid screening predictor
         </div>
       </div>
 
@@ -144,6 +140,12 @@ export default function NovelAlloyPredictor() {
                   <span className="rounded-full border border-surface-700 px-2 py-0.5 text-[10px] text-surface-500">
                     {result.winner.subcategory}
                   </span>
+                  <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] text-brand">
+                    {result.method}
+                  </span>
+                  <span className="rounded-full border border-surface-700 px-2 py-0.5 text-[10px] text-surface-400">
+                    confidence {result.confidence}%
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-right text-[11px] text-surface-500">
@@ -162,13 +164,13 @@ export default function NovelAlloyPredictor() {
                 <div>
                   <div>Density</div>
                   <div className="mt-1 font-mono text-zinc-100">
-                    {result.winner.density_g_cm3.toFixed(2)} g/cm³
+                    {formatNullable(result.winner.density_g_cm3, { digits: 2, suffix: " g/cm³" })}
                   </div>
                 </div>
                 <div>
                   <div>Cost</div>
                   <div className="mt-1 font-mono text-zinc-100">
-                    ${result.winner.cost_usd_kg.toFixed(2)}/kg
+                    {formatNullable(result.winner.cost_usd_kg, { digits: 2, prefix: "$", suffix: "/kg" })}
                   </div>
                 </div>
               </div>
@@ -176,12 +178,83 @@ export default function NovelAlloyPredictor() {
             <p className="mt-4 text-[13px] leading-[1.7] text-surface-400">
               {result.explanation}
             </p>
+
+            {result.warnings.length > 0 ? (
+              <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-3">
+                <div className="text-[10px] uppercase tracking-[0.1em] text-brand">
+                  Screening warnings
+                </div>
+                <div className="mt-2 space-y-2 text-[12px] leading-[1.6] text-amber-100">
+                  {result.warnings.map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {result.predictedProperties ? (
+              <div className="mt-4 rounded-xl border border-surface-800 bg-surface-900 px-3 py-3">
+                <div className="text-[10px] uppercase tracking-[0.1em] text-surface-600">
+                  Screening estimate
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-[11px] text-surface-500 md:grid-cols-3">
+                  <div>
+                    <div>Density</div>
+                    <div className="mt-1 font-mono text-zinc-100">
+                      {result.predictedProperties.density_g_cm3.toFixed(2)} g/cm³
+                    </div>
+                  </div>
+                  <div>
+                    <div>Tensile</div>
+                    <div className="mt-1 font-mono text-zinc-100">
+                      {result.predictedProperties.tensile_strength_mpa.toFixed(0)} MPa
+                    </div>
+                  </div>
+                  <div>
+                    <div>Modulus</div>
+                    <div className="mt-1 font-mono text-zinc-100">
+                      {result.predictedProperties.elastic_modulus_gpa.toFixed(1)} GPa
+                    </div>
+                  </div>
+                  <div>
+                    <div>CTE</div>
+                    <div className="mt-1 font-mono text-zinc-100">
+                      {result.predictedProperties.thermal_expansion_ppm_k.toFixed(1)} ppm/K
+                    </div>
+                  </div>
+                  <div>
+                    <div>Resistivity</div>
+                    <div className="mt-1 font-mono text-zinc-100">
+                      {result.predictedProperties.electrical_resistivity_ohm_m.toExponential(2)} Ω·m
+                    </div>
+                  </div>
+                  <div>
+                    <div>Cost</div>
+                    <div className="mt-1 font-mono text-zinc-100">
+                      ${result.predictedProperties.cost_usd_kg.toFixed(2)}/kg
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-surface-800 bg-surface-950 px-4 py-4">
             <div className="text-[10px] uppercase tracking-[0.1em] text-surface-600">
               Nearby Candidates
             </div>
+            {result.nearestAnalogs && result.nearestAnalogs.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {result.nearestAnalogs.slice(0, 5).map((material) => (
+                  <span
+                    key={material.id}
+                    className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] text-brand"
+                  >
+                    {material.name}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <div className="mt-3 space-y-2">
               {result.alternatives.map((material) => (
                 <div
@@ -212,7 +285,7 @@ export default function NovelAlloyPredictor() {
                     <div>
                       <div>Cost</div>
                       <div className="mt-1 font-mono text-zinc-100">
-                        ${material.cost_usd_kg.toFixed(0)}
+                        {formatNullable(material.cost_usd_kg, { digits: 0, prefix: "$" })}
                       </div>
                     </div>
                   </div>

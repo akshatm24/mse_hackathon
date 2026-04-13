@@ -8,7 +8,8 @@ import Header from "@/components/Header";
 import NovelAlloyPredictor from "@/components/NovelAlloyPredictor";
 import QueryForm from "@/components/QueryForm";
 import ResultsPanel from "@/components/ResultsPanel";
-import { materialCount } from "@/lib/materials-db";
+import materialsDB, { materialCount } from "@/lib/materials-db";
+import { sourceCount } from "@/lib/material-display";
 import type { RecommendResponse, UserConstraints } from "@/types";
 
 type WeightState = UserConstraints["priorityWeights"];
@@ -23,9 +24,9 @@ const DEFAULT_WEIGHTS: WeightState = {
 
 function buildLoadingSteps(totalMaterials: number) {
   return [
-    "Interpreting your query...",
+    "Extracting constraints...",
     `Scoring ${totalMaterials} materials...`,
-    "Retrieving best candidates...",
+    "Selecting best candidates (RAG)...",
     "Generating explanation..."
   ];
 }
@@ -34,7 +35,6 @@ export default function HomePage() {
   const [results, setResults] = useState<RecommendResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [apiAvailable, setApiAvailable] = useState(true);
   const [lastQuery, setLastQuery] = useState("");
   const [lastManualConstraints, setLastManualConstraints] = useState<
     Partial<UserConstraints> | undefined
@@ -45,7 +45,9 @@ export default function HomePage() {
   const [weights, setWeights] = useState<WeightState>(DEFAULT_WEIGHTS);
   const [weightsAutoDetected, setWeightsAutoDetected] = useState(false);
   const [hasManualWeightOverride, setHasManualWeightOverride] = useState(false);
+  const [negatedAxes, setNegatedAxes] = useState<string[]>([]);
   const querySectionRef = useRef<HTMLElement | null>(null);
+  const totalSources = sourceCount(materialsDB);
 
   const loadingSteps = buildLoadingSteps(materialCount);
 
@@ -60,7 +62,7 @@ export default function HomePage() {
       setLoadingStepIndex((current) =>
         current < loadingSteps.length - 1 ? current + 1 : current
       );
-    }, 200);
+    }, 600);
 
     return () => window.clearInterval(interval);
   }, [loading, loadingSteps.length]);
@@ -118,16 +120,15 @@ export default function HomePage() {
         throw new Error(data.error ?? "Something went wrong. Please try again.");
       }
 
-      setApiAvailable(true);
       if (data.inferredConstraints?.priorityWeights) {
         applyInferredWeights(data.inferredConstraints.priorityWeights);
       }
+      setNegatedAxes(data.inferredConstraints?._negatedAxes ?? []);
 
       startTransition(() => setResults(data));
       setSearchDurationMs(performance.now() - started);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
-      setApiAvailable(!/not configured/i.test(message));
       setError(message);
     } finally {
       setLoading(false);
@@ -168,15 +169,15 @@ export default function HomePage() {
             </h1>
             <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.7] text-zinc-500">
               Describe your engineering challenge in plain English. The AI extracts
-              constraints and ranks {materialCount}+ materials from ASM Handbook and MatWeb in
-              under 3 seconds.
+              constraints and ranks {materialCount.toLocaleString()} materials spanning curated,
+              cited, scraped, and Materials Project engineering datasets.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
               {[
-                [String(materialCount), "Materials"],
+                [materialCount.toLocaleString(), "Materials"],
                 ["5", "Categories"],
-                ["18", "Properties"]
+                [String(totalSources), "Sources"]
               ].map(([value, label], index) => (
                 <div key={label} className="flex items-center gap-6">
                   <div>
@@ -194,14 +195,15 @@ export default function HomePage() {
           <QueryForm
             onSubmit={handleSubmit}
             loading={loading}
-            apiAvailable={apiAvailable}
             weights={weights}
             weightsAutoDetected={weightsAutoDetected}
             hasManualWeightOverride={hasManualWeightOverride}
+            negatedAxes={negatedAxes}
             onWeightsChange={setWeights}
             onManualWeightOverride={() => {
               setWeightsAutoDetected(false);
               setHasManualWeightOverride(true);
+              setNegatedAxes([]);
             }}
           />
         </section>
@@ -282,7 +284,7 @@ export default function HomePage() {
               Smart Alloy Selector · MET-QUEST&apos;26
             </div>
             <div className="text-[10px] text-surface-700">
-              {materialCount} materials · ASM Handbook · MatWeb · NASA TPSX
+              {materialCount.toLocaleString()} materials from {totalSources} sources
             </div>
             <div className="flex items-center gap-3 text-[10px] text-surface-700">
               <span>Built with Next.js + Gemini</span>

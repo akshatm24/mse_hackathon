@@ -11,6 +11,7 @@ import {
 } from "recharts";
 
 import materialsDB from "@/lib/materials-db";
+import { formatNullable } from "@/lib/material-display";
 import { RankedMaterial } from "@/types";
 
 interface PropertyRadarChartProps {
@@ -38,7 +39,10 @@ const printabilityRanks = {
   "n/a": 0
 } as const;
 
-function normalise(value: number, maxValue: number) {
+function normalise(value: number | null | undefined, maxValue: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
   if (maxValue === 0) {
     return 100;
   }
@@ -57,10 +61,11 @@ export default function PropertyRadarChart({
     return null;
   }
 
-  const maxStrength = Math.max(...materialsDB.map((item) => item.tensile_strength_mpa));
-  const maxThermal = Math.max(...materialsDB.map((item) => item.max_service_temp_c));
-  const maxDensity = Math.max(...materialsDB.map((item) => item.density_g_cm3));
-  const maxCost = Math.max(...materialsDB.map((item) => item.cost_usd_kg));
+  const numeric = (values: Array<number | null>) => values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const maxStrength = Math.max(...numeric(materialsDB.map((item) => item.tensile_strength_mpa)), 1);
+  const maxThermal = Math.max(...numeric(materialsDB.map((item) => item.max_service_temp_c)), 1);
+  const maxDensity = Math.max(...numeric(materialsDB.map((item) => item.density_g_cm3)), 1);
+  const maxCost = Math.max(...numeric(materialsDB.map((item) => item.cost_usd_kg)), 1);
 
   const chartData = [
     {
@@ -80,20 +85,25 @@ export default function PropertyRadarChart({
       ...Object.fromEntries(
         topThree.map((item) => [
           item.name,
-          normalise(maxDensity - item.density_g_cm3, maxDensity)
+          typeof item.density_g_cm3 === "number"
+            ? normalise(maxDensity - item.density_g_cm3, maxDensity)
+            : 0
         ])
       )
     },
     {
       axis: "Cost Efficiency",
       ...Object.fromEntries(
-        topThree.map((item) => [item.name, normalise(maxCost - item.cost_usd_kg, maxCost)])
+        topThree.map((item) => [
+          item.name,
+          typeof item.cost_usd_kg === "number" ? normalise(maxCost - item.cost_usd_kg, maxCost) : 0
+        ])
       )
     },
     {
       axis: "Corrosion",
       ...Object.fromEntries(
-        topThree.map((item) => [item.name, corrosionRanks[item.corrosion_resistance] * 25])
+        topThree.map((item) => [item.name, (item.corrosion_resistance ? corrosionRanks[item.corrosion_resistance] : 0) * 25])
       )
     },
     {
@@ -162,10 +172,10 @@ export default function PropertyRadarChart({
                 {item.name}
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-surface-500">
-                <div>Strength: {item.tensile_strength_mpa} MPa</div>
-                <div>Thermal: {item.max_service_temp_c}°C</div>
-                <div>Density: {item.density_g_cm3.toFixed(2)} g/cm³</div>
-                <div>Cost: ${item.cost_usd_kg.toFixed(2)}/kg</div>
+                <div>Strength: {formatNullable(item.tensile_strength_mpa, { suffix: " MPa" })}</div>
+                <div>Thermal: {formatNullable(item.max_service_temp_c, { suffix: "°C" })}</div>
+                <div>Density: {formatNullable(item.density_g_cm3, { digits: 2, suffix: " g/cm³" })}</div>
+                <div>Cost: {formatNullable(item.cost_usd_kg, { digits: 2, prefix: "$", suffix: "/kg" })}</div>
               </div>
             </div>
           ))}

@@ -7,8 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "update-db": "node scripts/fetch-materials.mjs",
-    "export-csv": "node --import tsx scripts/export-csv.mjs"
+    "fetch-mp": "node --env-file=.env.local scripts/fetch-mp.mjs",
+    "process-mp": "node --env-file=.env.local scripts/process-mp.mjs",
+    "update-db": "npm run fetch-mp && npm run process-mp",
+    "update-db-mp": "npm run fetch-mp && npm run process-mp",
+    "scrape:all": "node --env-file=.env.local scripts/scrape/run-all.mjs",
+    "assemble-db": "node --env-file=.env.local scripts/assemble-db.mjs",
+    "build-db": "npm run fetch-mp && npm run scrape:all && npm run assemble-db",
+    "export-csv": "node --import tsx scripts/export-csv.mjs",
+    "eval:recommend": "node scripts/evals/run-recommendation-eval.mjs",
+    "eval:predict": "node scripts/evals/run-predictor-eval.mjs",
+    "eval:full": "node scripts/evals/run-full-eval.mjs"
   },
   "engines": {
     "node": ">=18.18.0"
@@ -30,8 +39,12 @@
     "@types/react": "18.3.28",
     "@types/react-dom": "18.3.7",
     "autoprefixer": "10.4.27",
+    "axios": "^1.15.0",
+    "cheerio": "^1.2.0",
+    "dotenv": "^17.4.2",
     "eslint": "8.57.1",
     "eslint-config-next": "14.2.35",
+    "playwright": "^1.59.1",
     "postcss": "8.5.9",
     "tailwindcss": "3.4.19",
     "tsx": "^4.21.0",

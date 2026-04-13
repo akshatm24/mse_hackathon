@@ -1,9 +1,10 @@
 "use client";
 
 import { ArrowUpDown, Loader2, Search, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import materialsDB from "@/lib/materials-db";
+import { dataQualityLabel, formatNullable, sourceBadge, sourceGroup } from "@/lib/material-display";
 import { Material } from "@/types";
 
 type SortKey =
@@ -16,6 +17,7 @@ type SortKey =
 
 type SortDirection = "asc" | "desc";
 type SearchMode = "exact" | "semantic";
+type SourceFilter = "All" | "Curated" | "Materials Project" | "Web Scraped" | "Manufacturer Datasheets";
 
 function categoryTone(category: Material["category"]) {
   if (category === "Metal") {
@@ -33,7 +35,10 @@ function categoryTone(category: Material["category"]) {
   return "border-rose-900 bg-[#3B1111] text-rose-400";
 }
 
-function costTone(cost: number) {
+function costTone(cost: number | null) {
+  if (cost === null) {
+    return "#A1A1AA";
+  }
   if (cost < 10) {
     return "#34D399";
   }
@@ -44,6 +49,9 @@ function costTone(cost: number) {
 }
 
 function corrosionDot(level: Material["corrosion_resistance"]) {
+  if (level === null) {
+    return "#71717A";
+  }
   if (level === "excellent") {
     return "#34D399";
   }
@@ -68,11 +76,15 @@ export default function DatabaseExplorer() {
     "All" | Material["corrosion_resistance"]
   >("All");
   const [fdm, setFdm] = useState<"All" | "Printable" | "Non-printable">("All");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("All");
+  const [experimentalOnly, setExperimentalOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [activeMaterial, setActiveMaterial] = useState<Material | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(30);
+  const [virtualStart, setVirtualStart] = useState(0);
+  const tableContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -162,6 +174,14 @@ export default function DatabaseExplorer() {
       .filter((material) =>
         corrosion === "All" ? true : material.corrosion_resistance === corrosion
       )
+      .filter((material) =>
+        sourceFilter === "All" ? true : sourceGroup(material) === sourceFilter
+      )
+      .filter((material) =>
+        experimentalOnly
+          ? material.data_quality !== "estimated" && material.data_quality !== "mp-calculated"
+          : true
+      )
       .filter((material) => {
         if (fdm === "All") {
           return true;
@@ -180,6 +200,8 @@ export default function DatabaseExplorer() {
           return leftValue.localeCompare(rightValue) * direction;
         }
 
+        if (leftValue === null || leftValue === undefined) return 1;
+        if (rightValue === null || rightValue === undefined) return -1;
         return ((leftValue as number) - (rightValue as number)) * direction;
       });
 
@@ -188,19 +210,46 @@ export default function DatabaseExplorer() {
     category,
     corrosion,
     debouncedSearch,
+    experimentalOnly,
     fdm,
     searchMode,
     semanticResults,
+    sourceFilter,
     sortDirection,
     sortKey
   ]);
 
   const visibleMaterials = filteredMaterials.slice(0, visibleCount);
+  const rowHeight = 49;
+  const usingVirtualRows = visibleMaterials.length > 200;
+  const virtualWindow = usingVirtualRows
+    ? visibleMaterials.slice(virtualStart, Math.min(visibleMaterials.length, virtualStart + 40))
+    : visibleMaterials;
+  const topSpacer = usingVirtualRows ? virtualStart * rowHeight : 0;
+  const bottomSpacer = usingVirtualRows
+    ? Math.max(0, (visibleMaterials.length - (virtualStart + virtualWindow.length)) * rowHeight)
+    : 0;
 
   useEffect(() => {
     setVisibleCount(30);
     setHighlightedIndex(0);
-  }, [filteredMaterials.length, category, corrosion, fdm, searchMode, debouncedSearch]);
+    setVirtualStart(0);
+  }, [filteredMaterials.length, category, corrosion, experimentalOnly, fdm, searchMode, debouncedSearch, sourceFilter]);
+
+  useEffect(() => {
+    const container = tableContainerRef.current;
+    if (!container || !usingVirtualRows) {
+      return;
+    }
+
+    function handleScroll() {
+      const nextStart = Math.max(0, Math.floor((container?.scrollTop ?? 0) / rowHeight) - 8);
+      setVirtualStart(nextStart);
+    }
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [usingVirtualRows]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -237,7 +286,7 @@ export default function DatabaseExplorer() {
         </div>
         <h2 className="mt-1 text-[20px] font-semibold text-zinc-100">Material Database</h2>
         <p className="mt-1 text-[13px] leading-[1.7] text-zinc-500">
-          Click any row for full property sheet. Sort by any column.
+          Click any row for full property sheet. Sort by any column and filter by source or data quality.
         </p>
       </div>
 
@@ -298,7 +347,7 @@ export default function DatabaseExplorer() {
         </select>
 
         <select
-          value={corrosion}
+          value={corrosion ?? "All"}
           onChange={(event) =>
             setCorrosion(event.target.value as "All" | Material["corrosion_resistance"])
           }
@@ -321,8 +370,33 @@ export default function DatabaseExplorer() {
           <option>Non-printable</option>
         </select>
 
+        <div className="flex items-center gap-1 rounded-lg border border-surface-800 bg-surface-900 p-1">
+          {(["All", "Curated", "Materials Project", "Web Scraped", "Manufacturer Datasheets"] as SourceFilter[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setSourceFilter(option)}
+              className={`rounded-md px-2 py-1 text-[11px] ${
+                sourceFilter === option ? "bg-surface-800 text-zinc-100" : "text-surface-500"
+              }`}
+            >
+              {option === "Materials Project" ? "MP" : option}
+            </button>
+          ))}
+        </div>
+
+        <label className="flex items-center gap-2 rounded-lg border border-surface-800 bg-surface-900 px-3 py-2 text-[12px] text-surface-400">
+          <input
+            type="checkbox"
+            checked={experimentalOnly}
+            onChange={(event) => setExperimentalOnly(event.target.checked)}
+            className="h-4 w-4 accent-amber-500"
+          />
+          Show only experimentally verified data
+        </label>
+
         <div className="ml-auto text-[11px] text-surface-600">
-          Showing {visibleMaterials.length} of {filteredMaterials.length} materials
+          Showing {visibleMaterials.length} of {filteredMaterials.length} filtered / {materialsDB.length} total
         </div>
       </div>
 
@@ -340,10 +414,11 @@ export default function DatabaseExplorer() {
       ) : null}
 
       <div
-        className="overflow-x-auto rounded-xl border border-surface-800"
+        ref={tableContainerRef}
+        className={`overflow-x-auto rounded-xl border border-surface-800 ${usingVirtualRows ? "max-h-[70vh] overflow-y-auto" : ""}`}
         tabIndex={0}
         onKeyDown={(event) => {
-          if (visibleMaterials.length === 0) {
+          if (virtualWindow.length === 0) {
             return;
           }
 
@@ -369,6 +444,7 @@ export default function DatabaseExplorer() {
               {[
                 ["Material", "name"],
                 ["Category", "category"],
+                ["Source", null],
                 ["Max Temp", "max_service_temp_c"],
                 ["Density", "density_g_cm3"],
                 ["Tensile", "tensile_strength_mpa"],
@@ -403,7 +479,7 @@ export default function DatabaseExplorer() {
             {filteredMaterials.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-10 text-center text-[13px] text-surface-600"
                 >
                   No materials match these filters.
@@ -411,17 +487,23 @@ export default function DatabaseExplorer() {
               </tr>
             ) : null}
 
-            {visibleMaterials.map((material, index) => (
+            {usingVirtualRows && topSpacer > 0 ? (
+              <tr>
+                <td colSpan={9} style={{ height: `${topSpacer}px` }} />
+              </tr>
+            ) : null}
+
+            {virtualWindow.map((material, index) => (
               <tr
                 key={material.id}
                 className={`cursor-pointer border-b border-brand-subtle ${
-                  highlightedIndex === index
+                  highlightedIndex === index + virtualStart
                     ? "bg-[#1F1F23]"
                     : index % 2 === 0
                       ? "bg-surface-900"
                       : "bg-[#141416]"
                 } transition`}
-                onMouseEnter={() => setHighlightedIndex(index)}
+                onMouseEnter={() => setHighlightedIndex(index + virtualStart)}
                 onClick={() => setActiveMaterial(material)}
               >
                 <td className="px-3 py-2">
@@ -434,20 +516,25 @@ export default function DatabaseExplorer() {
                     {material.category}
                   </span>
                 </td>
-                <td className="px-3 py-2 font-mono text-[11px] text-surface-400">
-                  {material.max_service_temp_c}
+                <td className="px-3 py-2">
+                  <span className="inline-flex rounded-full border border-surface-700 px-2 py-0.5 text-[9px] text-surface-300">
+                    {sourceBadge(material)}
+                  </span>
                 </td>
                 <td className="px-3 py-2 font-mono text-[11px] text-surface-400">
-                  {material.density_g_cm3.toFixed(2)}
+                  {formatNullable(material.max_service_temp_c)}
                 </td>
                 <td className="px-3 py-2 font-mono text-[11px] text-surface-400">
-                  {material.tensile_strength_mpa}
+                  {formatNullable(material.density_g_cm3, { digits: 2 })}
+                </td>
+                <td className="px-3 py-2 font-mono text-[11px] text-surface-400">
+                  {formatNullable(material.tensile_strength_mpa)}
                 </td>
                 <td
                   className="px-3 py-2 font-mono text-[11px]"
                   style={{ color: costTone(material.cost_usd_kg) }}
                 >
-                  ${material.cost_usd_kg.toFixed(2)}
+                  {formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$" })}
                 </td>
                 <td className="px-3 py-2 text-[12px]">
                   {material.printability_fdm !== "n/a" &&
@@ -462,10 +549,16 @@ export default function DatabaseExplorer() {
                     className="mr-1 inline-block h-1.5 w-1.5 rounded-full"
                     style={{ backgroundColor: corrosionDot(material.corrosion_resistance) }}
                   />
-                  {material.corrosion_resistance}
+                  {material.corrosion_resistance ?? "—"}
                 </td>
               </tr>
             ))}
+
+            {usingVirtualRows && bottomSpacer > 0 ? (
+              <tr>
+                <td colSpan={9} style={{ height: `${bottomSpacer}px` }} />
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
@@ -500,8 +593,11 @@ export default function DatabaseExplorer() {
                   >
                     {activeMaterial.category}
                   </span>
+                  <span className="rounded-full border border-surface-700 px-2 py-0.5 text-[10px] text-surface-400">
+                    {sourceBadge(activeMaterial)}
+                  </span>
                   <span className="rounded-full border border-surface-700 px-2 py-0.5 text-[10px] text-surface-600">
-                    {activeMaterial.data_source}
+                    {dataQualityLabel(activeMaterial)}
                   </span>
                 </div>
               </div>
@@ -518,10 +614,10 @@ export default function DatabaseExplorer() {
               {[
                 ["Subcategory", activeMaterial.subcategory],
                 ["Formula", activeMaterial.formula_pretty ?? "—"],
-                ["Density", `${activeMaterial.density_g_cm3.toFixed(2)} g/cm³`],
-                ["Tensile Strength", `${activeMaterial.tensile_strength_mpa} MPa`],
-                ["Yield Strength", `${activeMaterial.yield_strength_mpa} MPa`],
-                ["Elastic Modulus", `${activeMaterial.elastic_modulus_gpa.toFixed(1)} GPa`],
+                ["Density", formatNullable(activeMaterial.density_g_cm3, { digits: 2, suffix: " g/cm³" })],
+                ["Tensile Strength", formatNullable(activeMaterial.tensile_strength_mpa, { suffix: " MPa" })],
+                ["Yield Strength", formatNullable(activeMaterial.yield_strength_mpa, { suffix: " MPa" })],
+                ["Elastic Modulus", formatNullable(activeMaterial.elastic_modulus_gpa, { digits: 1, suffix: " GPa" })],
                 [
                   "Hardness",
                   activeMaterial.hardness_vickers === null
@@ -530,37 +626,33 @@ export default function DatabaseExplorer() {
                 ],
                 [
                   "Thermal Conductivity",
-                  `${activeMaterial.thermal_conductivity_w_mk.toFixed(2)} W/m·K`
+                  formatNullable(activeMaterial.thermal_conductivity_w_mk, { digits: 2, suffix: " W/m·K" })
                 ],
                 [
                   "Specific Heat",
-                  `${activeMaterial.specific_heat_j_gk.toFixed(2)} J/g·K`
+                  formatNullable(activeMaterial.specific_heat_j_gk, { digits: 2, suffix: " J/g·K" })
                 ],
                 [
                   "Melting Point",
-                  activeMaterial.melting_point_c === null
-                    ? "—"
-                    : `${activeMaterial.melting_point_c}°C`
+                  formatNullable(activeMaterial.melting_point_c, { suffix: "°C" })
                 ],
                 [
                   "Glass Transition",
-                  activeMaterial.glass_transition_c === null
-                    ? "—"
-                    : `${activeMaterial.glass_transition_c}°C`
+                  formatNullable(activeMaterial.glass_transition_c, { suffix: "°C" })
                 ],
-                ["Max Service Temp", `${activeMaterial.max_service_temp_c}°C`],
+                ["Max Service Temp", formatNullable(activeMaterial.max_service_temp_c, { suffix: "°C" })],
                 [
                   "Thermal Expansion",
-                  `${activeMaterial.thermal_expansion_ppm_k.toFixed(1)} ppm/K`
+                  formatNullable(activeMaterial.thermal_expansion_ppm_k, { digits: 1, suffix: " ppm/K" })
                 ],
                 [
                   "Resistivity",
-                  `${activeMaterial.electrical_resistivity_ohm_m.toExponential(2)} Ω·m`
+                  formatNullable(activeMaterial.electrical_resistivity_ohm_m, { digits: 2, scientific: true, suffix: " Ω·m" })
                 ],
-                ["Corrosion", activeMaterial.corrosion_resistance],
+                ["Corrosion", activeMaterial.corrosion_resistance ?? "—"],
                 ["Machinability", activeMaterial.machinability],
                 ["FDM Printability", activeMaterial.printability_fdm],
-                ["Cost", `$${activeMaterial.cost_usd_kg.toFixed(2)}/kg`]
+                ["Cost", formatNullable(activeMaterial.cost_usd_kg, { digits: 2, prefix: "$", suffix: "/kg" })]
               ].map(([label, value]) => (
                 <div
                   key={label}

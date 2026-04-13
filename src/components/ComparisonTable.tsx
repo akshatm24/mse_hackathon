@@ -1,5 +1,6 @@
 "use client";
 
+import { formatNullable, sourceBadge } from "@/lib/material-display";
 import { RankedMaterial } from "@/types";
 
 interface ComparisonTableProps {
@@ -23,55 +24,55 @@ const rows: Row[] = [
   {
     label: "Max Temp (°C)",
     value: (material) => material.max_service_temp_c,
-    display: (material) => `${material.max_service_temp_c}°C`,
+    display: (material) => formatNullable(material.max_service_temp_c, { suffix: "°C" }),
     better: "higher"
   },
   {
     label: "Density (g/cm³)",
     value: (material) => material.density_g_cm3,
-    display: (material) => material.density_g_cm3.toFixed(2),
+    display: (material) => formatNullable(material.density_g_cm3, { digits: 2 }),
     better: "lower"
   },
   {
     label: "Tensile (MPa)",
     value: (material) => material.tensile_strength_mpa,
-    display: (material) => `${material.tensile_strength_mpa}`,
+    display: (material) => formatNullable(material.tensile_strength_mpa),
     better: "higher"
   },
   {
     label: "Yield (MPa)",
     value: (material) => material.yield_strength_mpa,
-    display: (material) => `${material.yield_strength_mpa}`,
+    display: (material) => formatNullable(material.yield_strength_mpa),
     better: "higher"
   },
   {
     label: "Modulus (GPa)",
     value: (material) => material.elastic_modulus_gpa,
-    display: (material) => material.elastic_modulus_gpa.toFixed(1),
+    display: (material) => formatNullable(material.elastic_modulus_gpa, { digits: 1 }),
     better: "higher"
   },
   {
     label: "Thermal Cond. (W/m·K)",
     value: (material) => material.thermal_conductivity_w_mk,
-    display: (material) => material.thermal_conductivity_w_mk.toFixed(2),
+    display: (material) => formatNullable(material.thermal_conductivity_w_mk, { digits: 2 }),
     better: "higher"
   },
   {
     label: "Expansion (ppm/K)",
     value: (material) => material.thermal_expansion_ppm_k,
-    display: (material) => material.thermal_expansion_ppm_k.toFixed(1),
+    display: (material) => formatNullable(material.thermal_expansion_ppm_k, { digits: 1 }),
     better: "lower"
   },
   {
     label: "Resistivity (Ω·m)",
     value: (material) => material.electrical_resistivity_ohm_m,
-    display: (material) => material.electrical_resistivity_ohm_m.toExponential(2),
+    display: (material) => formatNullable(material.electrical_resistivity_ohm_m, { digits: 2, scientific: true }),
     better: "lower"
   },
   {
     label: "Cost ($/kg)",
     value: (material) => material.cost_usd_kg,
-    display: (material) => material.cost_usd_kg.toFixed(2),
+    display: (material) => formatNullable(material.cost_usd_kg, { digits: 2 }),
     better: "lower"
   }
 ];
@@ -148,11 +149,16 @@ export default function ComparisonTable({
                   className="px-4 py-3 text-left align-top"
                 >
                   <div className="text-[13px] font-semibold text-zinc-100">{material.name}</div>
-                  <span
-                    className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] ${categoryTone(material.category)}`}
-                  >
-                    {material.category}
-                  </span>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] ${categoryTone(material.category)}`}
+                    >
+                      {material.category}
+                    </span>
+                    <span className="inline-flex rounded-full border border-surface-700 px-2 py-0.5 text-[9px] text-surface-300">
+                      {sourceBadge(material)}
+                    </span>
+                  </div>
                 </th>
               ))}
             </tr>

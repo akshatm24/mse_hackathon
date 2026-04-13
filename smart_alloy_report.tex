@@ -2,300 +2,271 @@
 \usepackage[margin=2cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{microtype,setspace,parskip}
-\usepackage{titlesec,fancyhdr,booktabs,tabularx}
-\usepackage{xcolor,amsmath,hyperref,enumitem,tcolorbox}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
 
 \definecolor{amber}{RGB}{245,158,11}
 \definecolor{zinc}{RGB}{63,63,70}
-\onehalfspacing
-\setlength{\parindent}{0pt}\setlength{\parskip}{5pt}
 
-\titleformat{\section}{\normalsize\bfseries}
-  {{\color{amber}\thesection.}}{0.4em}{}
-  [\vspace{-2pt}\rule{\linewidth}{0.3pt}]
-\titleformat{\subsection}{\small\bfseries}{\thesubsection}{0.4em}{}
-
-\pagestyle{fancy}\fancyhf{}
+\pagestyle{fancy}
+\fancyhf{}
 \fancyhead[L]{\small\textcolor{zinc}{Smart Alloy Selector}}
-\fancyhead[R]{\small\textcolor{zinc}{MET-QUEST'26 Technical Report}}
+\fancyhead[R]{\small\textcolor{zinc}{MET-QUEST'26 Final Report}}
 \fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.3pt}
 
-\tcbuselibrary{skins}
-\newtcolorbox{highlight}{colback=amber!8,colframe=amber,
-  boxrule=0.5pt,arc=3pt,left=5pt,right=5pt,top=3pt,bottom=3pt}
+\newtcolorbox{highlight}{colback=amber!8,colframe=amber,boxrule=0.5pt,arc=3pt}
 
-\hypersetup{colorlinks,linkcolor=amber!80!black,
-  urlcolor=blue,pdftitle={Smart Alloy Selector}}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=amber!80!black,
+  urlcolor=blue,
+  pdftitle={Smart Alloy Selector Final Report}
+}
 
 \begin{document}
 
 \begin{center}
-{\Large\bfseries Smart Alloy Selector}\\[3pt]
-{\color{amber}\normalsize Needle in the Data-Stack
-  --- MET-QUEST'26 Technical Report}\\[5pt]
+{\Large\bfseries Smart Alloy Selector}\\[4pt]
+{\normalsize Final Database Expansion, Ranking, and Validation Report}\\[6pt]
 {\small
-\textbf{Live:}
-  \url{https://beautiful-tiramisu-211a94.netlify.app}
+\textbf{Live:} \url{https://beautiful-tiramisu-211a94.netlify.app}
 \quad
-\textbf{Code:}
-  \url{https://github.com/akshatm24/mse_hackathon}
+\textbf{Code:} \url{https://github.com/akshatm24/mse_hackathon}
 }\\[4pt]
+{\small
+\textbf{Team:} Akshat Mittal \quad Harshit Dashore \quad Aaditya Mukherjee
+}\\[6pt]
 \begin{tabular}{ll|ll}
-  LLM & Gemini Flash 2.0 &
-  Materials & 1{,}200+ (curated + MP)\\
-  RAG & all-MiniLM-L6-v2 &
-  Deploy & Netlify serverless\\
+Database & 7,116 materials & Frontend & Next.js 14 \\
+Baseline preserved & 655 entries & Deploy & Netlify \\
 \end{tabular}
 \end{center}
+
 \rule{\linewidth}{0.5pt}
 
 \begin{highlight}
 \textbf{Abstract.}
-Smart Alloy Selector automates engineering material selection
-from natural-language requirements. The system combines
-structured constraint extraction, a deterministic weighted
-scoring engine, a deduplicated database of 1{,}200+ materials,
-and a Retrieval Augmented Generation (RAG) layer to produce
-focused explanations. Curated handbook data covers practical
-engineering grades, while Materials Project API integration
-expands the search space with stable inorganic compounds.
-The application remains useful even when a remote model does
-not respond by falling back to local heuristic extraction and
-locally generated explanations.
+Smart Alloy Selector is a natural-language materials recommendation system that combines structured query extraction, deterministic ranking, shortlist-grounded explanation generation, and a novel-composition predictor. The final expansion in this repository grew the runtime database to 7,116 materials by merging the existing baseline with a paginated Materials Project fetch, web-scraped engineering property tables, and hardcoded cited entries from manufacturer and handbook sources. The ranking layer was updated for null-safe scoring, negation handling, solder and heat-sink intent, cryogenic and biomedical filtering, and rule-of-mixtures composition prediction. The resulting build passes TypeScript and production-build checks and is deployed on Netlify.
 \end{highlight}
 
-\section{Introduction and Problem Statement}
+\section{Problem Statement}
 
-Material selection remains a major bottleneck in design review
-because engineers typically move between static tables,
-datasheets, and handbook chapters without any system that can
-understand the actual problem statement. A user designing a
-4-point probe for copper-cobalt pellets must simultaneously
-consider conductivity, hardness, thermal stability, cost, and
-corrosion resistance, yet MatWeb and handbook tables provide
-properties rather than ranked decisions.
+The MET-QUEST'26 challenge asks for a virtual materials scientist: accept a plain-English engineering query, infer practical constraints, search a large property database, and return a ranked recommendation with explanation. In practice, this requires more than a semantic search layer. The system must:
 
-MET-QUEST'26 asks for an AI-based material recommendation tool
-that behaves like a virtual materials scientist: accept
-plain-English design intent, infer constraints, search a
-property database, and recommend the most suitable candidate
-with clear justification. Our implementation extends this idea
-with a larger database, semantic retrieval, and a novel alloy
-analogue predictor.
+\begin{itemize}[leftmargin=*]
+  \item remain stable when important properties are missing,
+  \item interpret negation correctly,
+  \item reject obviously wrong categories for task-specific queries,
+  \item scale to thousands of rows without breaking the UI,
+  \item and stay secure while using external APIs.
+\end{itemize}
 
-\section{System Architecture and Workflow}
+\section{System Architecture}
 
-\subsection{Full Pipeline}
+Each recommendation request follows the same five-stage pipeline:
 
-\begin{enumerate}[leftmargin=*,itemsep=2pt]
-  \item \textbf{Constraint extraction.} Gemini Flash 2.0 is
-  prompted to produce a strict \texttt{UserConstraints} JSON
-  object. If the remote call fails, a local heuristic extractor
-  infers temperature, density, printability, corrosion, and
-  property weights from keywords.
-
-  \item \textbf{Category intent inference.} Before scoring,
-  the query is scanned for manufacturing and domain signals.
-  For example, ``3D printed'' restricts the search to polymers,
-  while ``BGA solder'' restricts the search to solders.
-  This prevents ceramic outliers such as ZrO$_2$ from winning
-  plastic bracket queries.
-
-  \item \textbf{Deterministic scoring.} Candidates are filtered
-  against hard constraints and then scored using a weighted sum:
-  \begin{equation}
-    s_i = 100 \cdot \left(
-    w_T \hat{T}_i + w_S \hat{\sigma}_i +
-    w_W (1-\hat{\rho}_i) + w_C (1-\hat{C}_i^{\log}) +
-    w_R \hat{R}_i \right)
-  \end{equation}
-  with filtered-set normalisation and log-scale cost handling.
-
-  \item \textbf{RAG retrieval.} The explanation stage does not
-  send the full database to Gemini. Instead, the top scored
-  shortlist is semantically filtered using all-MiniLM-L6-v2
-  embeddings, and only the most relevant materials are passed
-  into the explanation prompt.
-
-  \item \textbf{Explanation generation.} Gemini produces a
-  three-paragraph engineering explanation. If the model does
-  not return, the app generates a local explanation directly
-  from the shortlisted property data, so the user still sees a
-  polished recommendation rather than a quota message.
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Constraint extraction.} Gemini plus a local heuristic fallback convert the query into a \texttt{UserConstraints} object.
+  \item \textbf{Intent inference.} Query phrases such as \texttt{BGA solder}, \texttt{3D print}, \texttt{cryogenic}, \texttt{marine}, and \texttt{biomedical implant} activate category and property gates.
+  \item \textbf{Deterministic ranking.} Candidates are hard-filtered and scored with null-safe logic.
+  \item \textbf{Shortlist-only RAG.} Explanation context is chosen only from ranked candidates, preventing explanation drift.
+  \item \textbf{Response generation.} The API returns ranked cards, warnings, inferred constraints, and explanation text.
 \end{enumerate}
 
-\subsection{Technology Stack}
+This architecture keeps the explanation aligned with the actual returned shortlist and prevents semantic retrieval from introducing materials that the scorer never selected.
 
-\begin{tabularx}{\linewidth}{llX}
+\section{Database Expansion Pipeline}
+
+\subsection{Phase 0 Audit}
+
+The checked-out baseline in this repository contained 655 existing materials. That baseline was preserved and treated as the highest-priority curated layer for all subsequent merges.
+
+\subsection{Materials Project Expansion}
+
+The Materials Project stage was rebuilt around paginated fetching instead of a hardcoded formula list. The fetch script queries stable metals, stable non-metals, and low-hull metastable phases, then joins elasticity data in secondary batches. Engineering relevance filters exclude radioactive or clearly impractical systems and prefer known engineering families such as:
+
+\begin{itemize}[leftmargin=*]
+  \item engineering metals,
+  \item oxides, carbides, nitrides, borides, and silicides,
+  \item semiconductor compounds,
+  \item fluorides used in optical applications,
+  \item intermetallics with known engineering relevance.
+\end{itemize}
+
+The processing stage converts MP rows into the runtime material format, estimates only defensible screening properties, enriches existing rows without deleting them, and keeps deduplicated formula-pretty representatives.
+
+\subsection{Web Scraping and Cited Sources}
+
+The data pipeline also includes scrapers and hardcoded cited datasets for:
+
+\begin{itemize}[leftmargin=*]
+  \item EngineeringToolbox tables,
+  \item Wikipedia property tables,
+  \item manufacturer alloy pages,
+  \item NIST enrichment hooks,
+  \item best-effort AZoM and MatWeb stages,
+  \item hardcoded cited entries for key engineering grades.
+\end{itemize}
+
+The hardcoded layer is used where reliable engineering data is available from datasheets or handbook-style references but not easy to scrape consistently.
+
+\subsection{Final Assembly}
+
+The final assembly order is:
+
+\begin{enumerate}[leftmargin=*]
+  \item preserved curated baseline,
+  \item hardcoded cited entries,
+  \item scraped entries,
+  \item Materials Project entries.
+\end{enumerate}
+
+Only null fields are enriched from lower-priority sources. Existing curated values are never overwritten by weaker sources.
+
+\section{Final Database State}
+
+The assembled database contains 7,116 unique materials:
+
+\begin{center}
+\begin{tabular}{lr}
 \toprule
-\textbf{Layer} & \textbf{Technology} & \textbf{Justification}\\
+\textbf{Group} & \textbf{Count} \\
 \midrule
-Frontend & Next.js 14, TypeScript &
-  Server routes keep API keys off the client bundle\\
-LLM & Gemini Flash 2.0 &
-  Fast, low-cost JSON extraction and explanation\\
-Embeddings & all-MiniLM-L6-v2 &
-  Local semantic retrieval without a second API provider\\
-Charts & Recharts &
-  Lightweight radar comparison and responsive UI\\
-Deploy & Netlify serverless &
-  Automatic GitHub deploys and simple environment setup\\
-\bottomrule
-\end{tabularx}
-
-\section{Materials Database}
-
-\subsection{Dataset Composition}
-
-The final build uses a hybrid database. First, 90 curated
-materials were entered manually from ASM Handbook, MatWeb, NASA
-TPSX, and manufacturer datasheets. These entries cover the
-engineering grades that judges expect to see in practice:
-316L, Ti-6Al-4V, Inconel 718, PETG, Nylon PA12, PEEK, SAC305,
-Monel 400, Hastelloy C-276, and similar benchmark materials.
-
-Second, a fetch pipeline was added for The Materials Project
-API. Rather than storing multiple crystal polymorphs with
-cryptic names such as ``Ag (Fm-3m, mp-124)'', the merge layer
-groups Materials Project entries by reduced formula and keeps
-the phase with the lowest energy above hull. Friendly names are
-assigned where appropriate, and raw pure-metal duplicates such
-as Ag, Al, Cu, Ti, Ni, Mo, W, and Au are dropped whenever a
-hand-curated engineering entry already covers that material
-family.
-
-\subsection{How Additional Data Is Imported}
-
-\begin{description}[leftmargin=0pt,itemsep=3pt]
-\item[\textbf{Materials Project API.}]
-\url{https://next.materialsproject.org/api}. The project uses
-\texttt{X-API-KEY} authentication and the summary endpoint to
-fetch density, energy above hull, band gap, and elastic moduli
-for exact chemical systems. The script
-\texttt{scripts/fetch-materials.mjs} expands a target formula
-list into a large set of relevant binary and ternary systems
-before generating a TypeScript dataset used directly by the app.
-
-\item[\textbf{ASM Handbook.}]
-Volumes 1 and 2 provide tensile strength, yield strength,
-hardness, thermal conductivity, service temperature, and alloy
-selection guidance for the curated metal grades.
-
-\item[\textbf{MatWeb and manufacturer datasheets.}]
-Used primarily for polymers, ceramics, solders, and specialty
-grades such as PEKK, PVDF, Ultem, Waspaloy, and low-temperature
-solder systems.
-\end{description}
-
-\subsection{Database Summary}
-
-\begin{tabular}{lrl}
-\toprule
-\textbf{Category} & \textbf{Scale} & \textbf{Examples}\\
+Preserved baseline entries & 655 \\
+New Materials Project entries & 5,690 \\
+New scraped entries & 758 \\
+New hardcoded cited entries & 13 \\
 \midrule
-Curated metals \& alloys & 40+ &
-  316L, Ti-6Al-4V, Inconel 718, Hastelloy C-276\\
-Curated polymers & 20+ &
-  PETG, PA12, PEEK, Ultem 1010, PPS\\
-Curated ceramics/composites/solders & 25+ &
-  Al$_2$O$_3$, SiC, CFRP, SAC305, AuSn20\\
-MP-derived inorganic compounds & 1{,}100+ &
-  oxides, carbides, nitrides, borides, semiconductors\\
-\textbf{Total deduplicated materials} & \textbf{1{,}271} &
-  18 properties each, searchable in the UI\\
+\textbf{Total} & \textbf{7,116} \\
 \bottomrule
 \end{tabular}
+\end{center}
 
-\section{RAG Pipeline}
+Category split:
 
-The RAG layer improves both quality and cost. Each material is
-converted into a descriptive text block including category,
-subcategory, temperature limit, strength, density, cost,
-corrosion level, printability, and tags. The user query is
-embedded with the same all-MiniLM-L6-v2 model. Cosine
-similarity then ranks the most relevant materials.
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+\textbf{Category} & \textbf{Count} \\
+\midrule
+Metal & 4,716 \\
+Polymer & 214 \\
+Ceramic & 2,114 \\
+Composite & 43 \\
+Solder & 29 \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-To keep the system practical on a large database, retrieval is
-hybrid. A lexical pre-filter narrows the pool to the most
-plausible matches, then only that shortlist is embedded. During
-recommendation, the RAG layer runs on the deterministic top-10
-scored materials. During semantic database search, it runs on a
-small prefiltered subset of the full corpus. This gives focused
-Gemini context without forcing the serverless function to embed
-all 1{,}271 materials on every request.
+Data quality split:
 
-\section{Worked Examples}
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+\textbf{Data quality} & \textbf{Count} \\
+\midrule
+Experimental / curated & 655 \\
+Hardcoded cited & 13 \\
+Scraped & 758 \\
+Estimated & 3,348 \\
+MP-calculated & 2,342 \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-\textbf{Cheapest material query.}
-For ``give me the cheapest possible material'', the heuristic
-extractor boosts cost weight aggressively. The top-ranked
-results are Grey Cast Iron and Carbon Steel 1020, rather than
-high-temperature or exotic compounds. This validates the
-log-scale cost normalisation and non-equal default weights.
+\section{Scoring and Query-Handling Fixes}
 
-\textbf{3D-printed bracket at 85\textdegree C.}
-For ``lightweight 3D printed bracket for 85 degree motor
-heat'', category intent restricts the shortlist to practical
-polymers. PETG and Nylon PA12 rise to the top, while ceramics
-are excluded from the top results despite their very high
-temperature capability.
+The final ranking update focused on making the recommendation layer robust for real engineering prompts.
 
-\textbf{Marine pump housing.}
-For ``marine pump seawater exposure high pressure'', the
-corrosion-biased weights and metal-only intent steer the result
-toward Monel 400 and Hastelloy C-276. This matches engineering
-intuition and rejects poor real-world choices such as PLA or
-cheap carbon steels for seawater duty.
+\subsection{Null-Safe Scoring}
 
-\section{Security and Deployment}
+Missing properties no longer crash or silently bias results:
 
-API keys are stored only in \texttt{.env.local} for local
-development and in Netlify environment variables for
-production. The public repository contains only placeholder
-values in \texttt{.env.example}. The git history was checked
-for accidental environment file commits, and the working tree
-was hardened by explicitly ignoring local environment files,
-Netlify build folders, raw Materials Project cache files, and
-private key material.
+\begin{itemize}[leftmargin=*]
+  \item if a primary property for the current query is missing, the material is removed from the strict candidate pool for that constraint,
+  \item if only a secondary property is missing, that subscore becomes neutral instead of punitive,
+  \item if the strict pool collapses to zero, a relaxed fallback keeps category intent and domain gates while dropping only the most restrictive numeric limits.
+\end{itemize}
 
-The live application is deployed at
-\url{https://beautiful-tiramisu-211a94.netlify.app}. GitHub
-pushes trigger Netlify builds automatically, so the deployed
-site always matches the repository state used for judging.
+\subsection{Negation and Task-Specific Intent}
 
-\section{Limitations and Future Work}
+The ranker now explicitly handles:
 
-All properties are still treated as room-temperature scalar
-values. The tool does not yet model fatigue, creep, fracture
-toughness, temperature-dependent modulus degradation, or
-microstructural processing windows. The Materials Project
-portion of the database also uses engineering heuristics to map
-DFT properties into practical screening values, so those
-entries should be treated as search-space expansion rather than
-drop-in procurement specs.
+\begin{itemize}[leftmargin=*]
+  \item \texttt{cheap}, \texttt{budget}, \texttt{cost irrelevant},
+  \item \texttt{lightweight}, \texttt{weight does not matter},
+  \item \texttt{no ceramics}, \texttt{not polymer},
+  \item \texttt{not brittle}, \texttt{non-magnetic},
+  \item \texttt{cryogenic}, \texttt{liquid nitrogen},
+  \item \texttt{biomedical implant},
+  \item \texttt{BGA solder joint 220C reflow, lead-free},
+  \item \texttt{heat sink, conduct heat away fast}.
+\end{itemize}
 
-Future work includes adding temperature-property curves,
-persistent vector storage for sub-second semantic retrieval,
-supplier integrations for real-time pricing, and a true
-composition-to-property regressor for novel alloys beyond
-nearest-known analogue prediction.
+One important correction was splitting \emph{service temperature} from \emph{thermal conductivity}. Generic heat-sink prompts now rank by heat-flow performance rather than by refractory temperature capability. Reflow solder prompts likewise use melting-window suitability instead of service-temperature ranking.
 
-\begin{thebibliography}{9}
-\bibitem{mp}A. Jain et al., ``The Materials Project: A materials
-genome approach to accelerating materials innovation,''
-\textit{APL Materials}, 2013.
-\bibitem{asm}ASM International,
-\textit{ASM Handbook Volumes 1 and 2}, 10th ed., 2023.
-\bibitem{matweb}MatWeb LLC, \url{https://www.matweb.com}, 2024.
-\bibitem{ashby}M. F. Ashby,
-\textit{Materials Selection in Mechanical Design}, 4th ed., 2011.
-\bibitem{gemini}Google DeepMind,
-\textit{Gemini Technical Report}, 2024.
-\bibitem{minilm}N. Reimers and I. Gurevych,
-``Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks,''
-\textit{EMNLP}, 2019.
-\end{thebibliography}
+\subsection{Novel Composition Prediction}
+
+The predictor now parses typed compositions such as \texttt{Fe-18Cr-8Ni} and estimates screening properties using rule-of-mixtures style approximations for density, conductivity, resistivity, modulus, and cost. The response is explicitly labeled as a composition-based estimate rather than a certification-grade prediction.
+
+\section{UI and Runtime Changes}
+
+The interface was updated for the larger dataset:
+
+\begin{itemize}[leftmargin=*]
+  \item the hero and stats bar now show the live material count,
+  \item the database browser reads from a JSON-backed runtime dataset,
+  \item null values render as em-dash placeholders instead of fake zeros,
+  \item source and data-quality fields are surfaced in the UI layer,
+  \item recommendation cards and comparison components were patched for nullable fields.
+\end{itemize}
+
+\section{Validation}
+
+The final validation run covered the following representative query families:
+
+\begin{itemize}[leftmargin=*]
+  \item cheapest-material prompts,
+  \item maximum-strength / cost-irrelevant prompts,
+  \item BGA solder and reflow prompts,
+  \item FDM printable bracket prompts,
+  \item heat-sink and thermal-management prompts,
+  \item cryogenic-vessel prompts,
+  \item conductive probe prompts,
+  \item marine corrosion prompts,
+  \item biomedical implant prompts,
+  \item ambiguous queries such as \texttt{good material}.
+\end{itemize}
+
+The implementation also passed:
+
+\begin{itemize}[leftmargin=*]
+  \item \texttt{npx tsc --noEmit}
+  \item \texttt{npm run build}
+\end{itemize}
+
+\section{Security and Operational Notes}
+
+Security requirements were enforced through the workflow:
+
+\begin{itemize}[leftmargin=*]
+  \item local secrets remain in \texttt{.env.local},
+  \item source code was checked for hardcoded keys,
+  \item generated raw scrape files and local environment files are ignored by git,
+  \item the README documents the pipeline without exposing secrets.
+\end{itemize}
+
+\section{Conclusion}
+
+The final Smart Alloy Selector build is no longer a small curated demo. It is a multi-source engineering screening system with a 7,116-row runtime database, deterministic ranking, shortlist-grounded explanations, and a dedicated data pipeline for fetch, scrape, normalize, and assembly stages. The resulting app is substantially broader in coverage while also being safer: it handles missing data, avoids common query-parsing traps, and remains auditable from raw source ingestion to final recommendation output.
 
 \end{document}

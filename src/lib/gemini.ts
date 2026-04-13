@@ -1,6 +1,141 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-import { UserConstraints, RankedMaterial } from "@/types";
+import type { RankedMaterial, UserConstraints } from "@/types";
+
+const COST_SIGNALS = [
+  "cheap",
+  "cheapest",
+  "budget",
+  "affordable",
+  "low cost",
+  "inexpensive",
+  "low price",
+  "economical",
+  "under $",
+  "cost effective",
+  "minimum cost",
+  "save money",
+  "frugal",
+  "bargain",
+  "low-cost",
+  "price point",
+  "least expensive",
+  "economy"
+];
+
+const THERMAL_SIGNALS = [
+  "heat",
+  "hot",
+  "temperature",
+  "temp",
+  "warp",
+  "melt",
+  "thermal",
+  "motor",
+  "engine",
+  "furnace",
+  "oven",
+  "°c",
+  "celsius",
+  "degrees",
+  "fire",
+  "high temp",
+  "heat resistant",
+  "reflow",
+  "autoclave",
+  "thermal cycling",
+  "elevated temp",
+  "service temp"
+];
+
+const WEIGHT_SIGNALS = [
+  "light",
+  "lightweight",
+  "low weight",
+  "low density",
+  "light weight",
+  "drone",
+  "aircraft",
+  "aerospace",
+  "portable",
+  "wearable",
+  "rocket",
+  "satellite",
+  "weight saving",
+  "mass reduction",
+  "low mass"
+];
+
+const STRENGTH_SIGNALS = [
+  "strong",
+  "high strength",
+  "load",
+  "structural",
+  "tensile",
+  "bearing",
+  "stiff",
+  "rigid",
+  "tough",
+  "load bearing",
+  "withstand",
+  "durable",
+  "robust",
+  "mpa",
+  "gpa",
+  "bracket",
+  "support"
+];
+
+const CORROSION_SIGNALS = [
+  "corros",
+  "rust",
+  "marine",
+  "seawater",
+  "acid",
+  "chemical",
+  "ocean",
+  "salt",
+  "oxidat",
+  "outdoor",
+  "weather",
+  "wet",
+  "moisture",
+  "saltwater"
+];
+
+const FDM_SIGNALS = ["3d print", "3d printed", "fdm", "filament", "desktop printer", "slicer"];
+const ELECTRICAL_SIGNALS = [
+  "conduct",
+  "electrical",
+  "resistiv",
+  "probe",
+  "circuit",
+  "electrode",
+  "contact",
+  "pcb",
+  "conductive",
+  "connector"
+];
+const THERMAL_CONDUCTIVITY_SIGNALS = [
+  "thermal management",
+  "heat sink",
+  "heat spreader",
+  "conduct heat",
+  "conduct heat away",
+  "dissipate heat",
+  "draw heat away",
+  "thermally conductive"
+];
+const THERMAL_INSULATION_SIGNALS = [
+  "thermal insulator",
+  "thermal barrier",
+  "thermally insulating",
+  "low thermal conductivity",
+  "reduce heat transfer",
+  "insulation"
+];
+
+type PriorityWeights = UserConstraints["priorityWeights"];
 
 function getClient() {
   const key = process.env.GEMINI_API_KEY;
@@ -10,509 +145,436 @@ function getClient() {
   return new GoogleGenerativeAI(key);
 }
 
-// Normalise weight object so values sum to exactly 1.0
-function normaliseWeights(
-  w: UserConstraints["priorityWeights"]
-): UserConstraints["priorityWeights"] {
-  const total = w.thermal + w.strength + w.weight + w.cost + w.corrosion;
-  if (total === 0) {
+function countHits(query: string, signals: string[]) {
+  return signals.filter((signal) => query.includes(signal)).length;
+}
+
+function normaliseWeights(weights: PriorityWeights): PriorityWeights {
+  const total =
+    weights.thermal +
+    weights.strength +
+    weights.weight +
+    weights.cost +
+    weights.corrosion;
+
+  if (total <= 0) {
     return {
-      strength: 0.3,
-      cost: 0.3,
-      thermal: 0.15,
-      weight: 0.15,
-      corrosion: 0.1
+      thermal: 0.18,
+      strength: 0.28,
+      weight: 0.18,
+      cost: 0.28,
+      corrosion: 0.08
     };
   }
-  const t = total;
+
+  const thermal = Math.round((weights.thermal / total) * 1000) / 1000;
+  const strength = Math.round((weights.strength / total) * 1000) / 1000;
+  const weight = Math.round((weights.weight / total) * 1000) / 1000;
+  const cost = Math.round((weights.cost / total) * 1000) / 1000;
+  const corrosion = Math.max(0, 1 - thermal - strength - weight - cost);
+
   return {
-    thermal: Math.round((w.thermal / t) * 1000) / 1000,
-    strength: Math.round((w.strength / t) * 1000) / 1000,
-    weight: Math.round((w.weight / t) * 1000) / 1000,
-    cost: Math.round((w.cost / t) * 1000) / 1000,
-    corrosion: Math.round((w.corrosion / t) * 1000) / 1000
+    thermal,
+    strength,
+    weight,
+    cost,
+    corrosion: Math.round(corrosion * 1000) / 1000
   };
 }
 
-function validateAndCorrectWeights(
-  constraints: UserConstraints
-): UserConstraints {
-  const weights = constraints.priorityWeights;
-  const maxWeight = Math.max(...Object.values(weights));
-  const isBalanced = maxWeight < 0.3;
-
-  // If Gemini returns overly flat weights, fall back to the stronger
-  // heuristic signal so obvious intents like "cheap" or "marine" still
-  // produce intuitive rankings.
-  if (!isBalanced) {
-    return constraints;
-  }
-
-  const heuristic = heuristicExtract(constraints.rawQuery ?? "");
-  const heuristicMax = Math.max(...Object.values(heuristic.priorityWeights));
-
-  if (heuristicMax > maxWeight) {
-    return {
-      ...constraints,
-      priorityWeights: heuristic.priorityWeights
-    };
-  }
-
-  return constraints;
+function hasAnySignal(query: string, signals: string[]) {
+  return signals.some((signal) => query.includes(signal));
 }
 
-function generateLocalExplanation(
-  query: string,
-  ranked: RankedMaterial[]
-): string {
-  if (!ranked || ranked.length === 0) {
-    return (
-      "No materials matched your constraints. " +
-      "Try relaxing the filters or rephrasing your query."
-    );
+function parseNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function parseBoolean(value: unknown) {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function displayNumber(value: number | null | undefined, suffix = "", digits = 0) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "—";
+  }
+  return `${value.toFixed(digits)}${suffix}`;
+}
+
+function detectNegatedAxes(query: string) {
+  return {
+    strength:
+      /\blow\s+strength\b|\bweak(?:er)?\b|\bnot\s+strong\b|\bsoft\s+material\b|\bstrength\s+not\b|\bno\s+(?:load|stress|structural)\b|\blow\s+tensile\b|\blow\s+stiffness\b|\bflexible\b(?!.*rigid)|\bductile\b|\beasily\s+cut\b|\beasy\s+to\s+cut\b|\blow\s+hardness\b/.test(
+        query
+      ),
+    thermal:
+      /\blow\s+temp\b|\bcold\s+(?:env|environment|app|application|use)\b|\bcryogen|\bnot\s+hot\b|\broom\s+temp\s+only\b|\bno\s+heat\b|\bheat\s+not\s+(?:important|critical|needed)\b|\bambient\s+temp\b|\bminus\s+\d+\b|-\d+\s*°?\s*c\b|\bliquid\s+(?:nitrogen|helium)\b/.test(
+        query
+      ),
+    weight:
+      /\bheavy\b(?!\s+duty\s+load)|\bdense\b|\bweight\s+not\b|\bmass\s+not\b|\bnot\s+lightweight\b|\bdensity\s+not\b/.test(
+        query
+      ),
+    cost:
+      /\bcost\s+not\b|\bbudget\s+not\b|\bmoney\s+no\s+object\b|\bprice\s+irrelevant\b|\bexpensive\s+(?:is\s+)?(?:ok|fine)\b|\bperformance\s+over\s+cost\b|\bno\s+budget\b/.test(
+        query
+      ),
+    corrosion:
+      /\bindoor\b|\bdry\s+env\b|\bdry\s+environment\b|\bno\s+moisture\b|\bcorrosion\s+not\b|\bnot\s+exposed\b|\bprotected\s+from\b/.test(
+        query
+      )
+  };
+}
+
+function chooseTemperature(query: string, isCryogenic: boolean) {
+  const tempMatch = query.match(/(-?\d{2,4})\s*(?:°?\s*c\b|celsius|degrees?\s*c)/i);
+  if (tempMatch) {
+    return Number.parseInt(tempMatch[1], 10);
   }
 
-  const top = ranked[0];
-  const second = ranked[1];
-  const third = ranked[2];
+  if (query.includes("motor")) return 85;
+  if (query.includes("oven")) return 200;
+  if (query.includes("furnace")) return 500;
+  if (query.includes("autoclave")) return 135;
+  if (isCryogenic) return 25;
+  return undefined;
+}
 
-  const para1 =
-    `Based on your query, the top recommendation is ${top.name} with a ` +
-    `match score of ${top.score}/100. ` +
-    `It offers a maximum service temperature of ${top.max_service_temp_c}°C, ` +
-    `tensile strength of ${top.tensile_strength_mpa} MPa, density of ` +
-    `${top.density_g_cm3} g/cm³, and costs approximately ` +
-    `$${top.cost_usd_kg}/kg. ` +
-    `Its corrosion resistance is rated ${top.corrosion_resistance} ` +
-    `and it falls in the ${top.subcategory} subcategory. ` +
+function chooseBudget(query: string) {
+  const budgetMatch = query.match(
+    /(?:under|less\s+than|below|max|budget[^\d]*)\s*\$?\s*(\d+(?:\.\d+)?)/i
+  );
+  return budgetMatch ? Number.parseFloat(budgetMatch[1]) : undefined;
+}
+
+function needsThermalConductivity(query: string) {
+  return hasAnySignal(query, THERMAL_CONDUCTIVITY_SIGNALS);
+}
+
+function needsThermalInsulation(query: string) {
+  return hasAnySignal(query, THERMAL_INSULATION_SIGNALS);
+}
+
+function generateLocalExplanation(query: string, ranked: RankedMaterial[]): string {
+  if (!ranked?.length) {
+    return "No materials matched. Try relaxing your filters.";
+  }
+
+  const [top, second, third] = ranked;
+
+  const p1 =
+    `Based on your requirements, ${top.name} is recommended with a match score of ${top.score}/100. ` +
+    `Key properties: max service temperature ${displayNumber(top.max_service_temp_c, "°C")}, tensile strength ` +
+    `${displayNumber(top.tensile_strength_mpa, " MPa")} , density ${displayNumber(top.density_g_cm3, " g/cm³", 2)}, and cost approximately ` +
+    `$${displayNumber(top.cost_usd_kg, "", 2)}/kg. Corrosion resistance is rated ${top.corrosion_resistance ?? "unknown"}` +
     (top.printability_fdm !== "n/a"
-      ? `FDM printability is ${top.printability_fdm}, ` +
-        `making it ${
-          top.printability_fdm === "excellent" || top.printability_fdm === "good"
-            ? "suitable"
-            : "challenging"
-        } for desktop 3D printing. `
-      : "It is not intended for FDM printing. ") +
-    `This material was sourced from: ${top.data_source}.`;
+      ? ` with ${top.printability_fdm} FDM printability.`
+      : ".") +
+    ` Source: ${top.data_source}.`;
 
-  const para2 =
+  const p2 =
     second && third
-      ? `Comparing the top three candidates: ${top.name} (score ${top.score}) leads on the ` +
-        `highest-weighted properties for this query. ${second.name} (score ${second.score}) is the ` +
-        `next best option — it offers ${second.max_service_temp_c}°C service temperature ` +
-        `and ${second.tensile_strength_mpa} MPa tensile strength at $${second.cost_usd_kg}/kg, ` +
-        `which may be preferred if ${
-          second.density_g_cm3 < top.density_g_cm3
-            ? "lower density is critical"
-            : second.cost_usd_kg < top.cost_usd_kg
-              ? "cost is the primary driver"
-              : "its specific property profile better suits your geometry"
-        }. ${third.name} (score ${third.score}) rounds out the shortlist at ` +
-        `$${third.cost_usd_kg}/kg with ${third.tensile_strength_mpa} MPa tensile strength — ` +
-        `consider it if ${
-          third.corrosion_resistance === "excellent" &&
-          top.corrosion_resistance !== "excellent"
-            ? "corrosion resistance is more critical than initially stated"
-            : third.cost_usd_kg < top.cost_usd_kg
-              ? "budget constraints tighten"
-              : "the application envelope changes"
-        }.`
-      : `Only ${top.name} strongly matched all stated constraints. ` +
-        "Consider relaxing cost or temperature limits to see more alternatives.";
+      ? `Among the top candidates, ${top.name} leads overall. ${second.name} (${second.score}/100) offers ` +
+        `${displayNumber(second.tensile_strength_mpa, " MPa")} at $${displayNumber(second.cost_usd_kg, "", 2)}/kg - preferred when ` +
+        ((second.density_g_cm3 ?? Number.POSITIVE_INFINITY) < (top.density_g_cm3 ?? Number.POSITIVE_INFINITY)
+          ? "minimum weight is the priority. "
+          : (second.cost_usd_kg ?? Number.POSITIVE_INFINITY) < (top.cost_usd_kg ?? Number.POSITIVE_INFINITY)
+            ? "cost is the main driver. "
+            : "its properties better fit specific geometry. ") +
+        `${third.name} (${third.score}/100) rounds the shortlist.`
+      : `Only ${top.name} matched all stated constraints. Relax temperature or cost limits for more options.`;
 
-  const para3 =
-    "Key caveats before ordering: all property values are at room temperature (20–25°C) " +
-    "and may degrade at elevated service temperatures. Cost values are 2024 market approximations " +
-    "and vary by supplier, grade, and quantity. " +
+  const p3 =
+    `Engineering caveats: values are at room temperature and may degrade at elevated service temperatures. ` +
+    `Cost estimates are 2024 market prices, varying by supplier and quantity. ` +
     (top.category === "Polymer"
-      ? `For polymer components, confirm the glass transition temperature (${top.glass_transition_c}°C) is not exceeded under continuous load, as creep and deformation can occur below the nominal service limit. `
+      ? `For polymers, confirm glass transition temperature (${displayNumber(top.glass_transition_c, "°C")}) is not exceeded under sustained load - creep may occur below the nominal limit.`
       : top.category === "Ceramic"
-        ? "Ceramics are brittle — verify fracture toughness and thermal shock resistance for your geometry before finalising this selection. "
+        ? "Ceramics are brittle - verify fracture toughness and thermal shock resistance before finalising."
         : top.category === "Solder"
-          ? "Confirm reflow profile compatibility and check RoHS compliance requirements for your application. "
-          : "Verify the specific alloy grade and heat treatment condition matches your procurement specification. ") +
-    "Run a secondary check against the full property sheet visible below before placing an order.";
+          ? "Confirm reflow profile and RoHS compliance."
+          : "Verify alloy grade and heat treatment condition match your procurement specification.");
 
-  return [para1, para2, para3].join("\n\n");
+  return [p1, p2, p3].join("\n\n");
 }
 
 export function heuristicExtract(query: string): UserConstraints {
   const q = query.toLowerCase();
-  const aggressiveBudget =
-    q.includes("cheapest") ||
-    q.includes("lowest cost") ||
-    q.includes("cheapest possible");
-  const solderWords = [
-    "solder",
-    "bga",
-    "reflow",
-    "pcb joint",
-    "lead-free",
-    "rohs",
-    "smt",
-    "die attach"
-  ];
-  const isSolderAssembly = solderWords.some((s) => q.includes(s));
-
-  // Default weights — biased toward cost+strength for ambiguous
-  // queries. This prevents outlier ceramics from always winning.
-  const w = {
-    strength: 0.3,
-    cost: 0.3,
-    thermal: 0.15,
-    weight: 0.15,
-    corrosion: 0.1
-  };
-
-  // Signal groups — first strong match overrides defaults
-  const thermalSignals = [
-    "heat",
-    "temp",
-    "hot",
-    "warp",
-    "melt",
-    "thermal",
-    "motor heat",
-    "engine",
-    "furnace",
-    "oven",
-    "°c",
-    "celsius",
-    "service temp",
-    "fire",
-    "high-temp",
-    "reflow"
-  ];
-  const lightSignals = [
-    "light",
-    "lightweight",
-    "weight",
-    "density",
-    "drone",
-    "aircraft",
-    "aerospace",
-    "portable",
-    "wearable",
-    "rocket",
-    "satellite",
-    "low mass",
-    "low weight"
-  ];
-  const strengthSignals = [
-    "strong",
-    "strength",
-    "load",
-    "stress",
-    "force",
-    "structural",
-    "bearing",
-    "high strength",
-    "tensile",
-    "yield",
-    "support",
-    "load-bearing",
-    "mpa",
-    "gpa",
-    "stiff"
-  ];
-  const costSignals = [
-    "cheap",
-    "cost",
-    "budget",
-    "affordable",
-    "price",
-    "inexpensive",
-    "low cost",
-    "economical",
-    "dollar",
-    "$/kg",
-    "under $",
-    "less than $"
-  ];
-  const corrosionSignals = [
-    "corros",
-    "rust",
-    "marine",
-    "seawater",
-    "acid",
-    "chemical",
-    "ocean",
-    "salt water",
-    "oxidat",
-    "outdoor",
-    "weather",
-    "wet environment"
-  ];
-
-  const heat = thermalSignals.filter((s) => q.includes(s)).length;
-  const light = lightSignals.filter((s) => q.includes(s)).length;
-  const str = strengthSignals.filter((s) => q.includes(s)).length;
-  const cost = costSignals.filter((s) => q.includes(s)).length;
-  const corr = corrosionSignals.filter((s) => q.includes(s)).length;
-
-  // Apply the strongest signal, others get moderate boosts
-  const maxSignal = Math.max(heat, light, str, cost, corr);
-  if (maxSignal > 0) {
-    if (heat === maxSignal) {
-      w.thermal = 0.4;
-      w.strength = 0.2;
-      w.weight = 0.18;
-      w.cost = 0.15;
-      w.corrosion = 0.07;
-    } else if (light === maxSignal) {
-      w.weight = 0.4;
-      w.thermal = 0.2;
-      w.strength = 0.2;
-      w.cost = 0.15;
-      w.corrosion = 0.05;
-    } else if (str === maxSignal) {
-      w.strength = 0.4;
-      w.thermal = 0.2;
-      w.weight = 0.18;
-      w.cost = 0.15;
-      w.corrosion = 0.07;
-    } else if (cost === maxSignal) {
-      w.cost = aggressiveBudget ? 0.8 : 0.65;
-      w.strength = aggressiveBudget ? 0.1 : 0.15;
-      w.thermal = 0.05;
-      w.weight = aggressiveBudget ? 0.03 : 0.1;
-      w.corrosion = aggressiveBudget ? 0.02 : 0.05;
-    } else if (corr === maxSignal) {
-      w.corrosion = 0.4;
-      w.strength = 0.25;
-      w.thermal = 0.15;
-      w.weight = 0.1;
-      w.cost = 0.1;
-    }
-  }
-
-  if (
-    q.includes("marine") ||
-    q.includes("seawater") ||
-    q.includes("salt water") ||
-    q.includes("ocean")
-  ) {
-    w.corrosion = 0.55;
-    w.strength = 0.2;
-    w.thermal = 0.1;
-    w.weight = 0.05;
-    w.cost = 0.1;
-  }
-
-  // Extract temperature number
-  const tempMatch = q.match(
-    /(\d{2,4})\s*(?:°?\s*c\b|celsius|degrees?\s*c)/i
-  );
-  const contextTemp = q.includes("motor")
-    ? 85
-    : q.includes("oven")
-      ? 200
-      : q.includes("furnace")
-        ? 500
-        : q.includes("autoclave")
-          ? 135
-          : q.includes("cryogen")
-            ? -50
-            : undefined;
-
-  // FDM detection
-  const fdmWords = [
-    "3d print",
-    "fdm",
-    "fused",
-    "desktop printer",
-    "filament",
-    "pla",
-    "petg",
-    "print",
-    "nozzle"
-  ];
-  const needsFDM = fdmWords.some((s) => q.includes(s));
-  const practicalFdmQuery =
-    needsFDM &&
-    !["aerospace", "autoclave", "medical", "steril", "flame", "high-temp", "high temperature"].some((s) =>
-      q.includes(s)
+  const neg = detectNegatedAxes(q);
+  const isCryogenic =
+    /cryogen|liquid\s*nitrogen|liquid\s*helium|-196|-269|ultra\s*low\s*temp|deep\s*cold/.test(
+      q
     );
 
-  // Electrical conductivity detection
-  const condWords = [
-    "conduct",
-    "electrical",
-    "resistiv",
-    "probe",
-    "circuit",
-    "electrode",
-    "contact",
-    "pcb",
-    "current"
-  ];
-  const needsConductive = condWords.some((s) => q.includes(s));
+  const hits = {
+    cost: neg.cost ? 0 : countHits(q, COST_SIGNALS),
+    thermal: neg.thermal
+      ? 0
+      : countHits(q, THERMAL_SIGNALS) +
+        (needsThermalConductivity(q) || needsThermalInsulation(q) ? 2 : 0),
+    weight: neg.weight ? 0 : countHits(q, WEIGHT_SIGNALS),
+    strength: neg.strength ? 0 : countHits(q, STRENGTH_SIGNALS),
+    corrosion: neg.corrosion ? 0 : countHits(q, CORROSION_SIGNALS)
+  };
 
-  const explicitBudgetMatch = q.match(
-    /(?:under|below|less than|max(?:imum)?(?: cost)? of?)\s*\$?\s*(\d+(?:\.\d+)?)/i
-  );
-  const parsedBudget = explicitBudgetMatch
-    ? parseFloat(explicitBudgetMatch[1])
-    : undefined;
+  const weights: PriorityWeights = {
+    strength: 0.28,
+    cost: 0.28,
+    thermal: 0.18,
+    weight: 0.18,
+    corrosion: 0.08
+  };
 
-  let maxCost = Number.isFinite(parsedBudget) ? parsedBudget : undefined;
-  if (aggressiveBudget && !isSolderAssembly) {
-    maxCost = Math.min(maxCost ?? Infinity, 2);
-  }
-
-  // Corrosion requirement
-  const corrosionRequired: "excellent" | "good" | "fair" | undefined =
-    q.includes("highly corrosive") ||
-    q.includes("strong acid") ||
-    q.includes("marine") ||
-    q.includes("seawater") ||
-    q.includes("salt water") ||
-    q.includes("ocean")
-      ? "excellent"
-      : q.includes("corrosion resist") || q.includes("chemical")
-        ? "good"
-        : undefined;
-
-  // Max density for lightweight queries
-  const maxDensity = light > 0 ? 3.5 : undefined;
-  let minTensileStrength: number | undefined;
-
-  // For solder/reflow queries, the explicit temperature describes the process
-  // envelope and is later compared against melting point rather than service
-  // temperature. Keep the number so SAC305-like solders can still be filtered
-  // against realistic reflow windows.
-  const tempFromText = tempMatch ? parseInt(tempMatch[1], 10) : undefined;
-  let maxTemperature = tempFromText ?? contextTemp;
-
-  if (
-    isSolderAssembly &&
-    q.includes("automotive") &&
-    tempFromText === undefined &&
-    maxTemperature === undefined
-  ) {
-    maxTemperature = 125;
-  }
-
-  // Practical desktop-FDM queries should stay in the commodity /
-  // prosumer polymer band. Otherwise PEEK/PEKK win on overkill thermal
-  // headroom even when PETG or PA12 are the intuitive engineering picks.
-  if (practicalFdmQuery) {
-    maxCost = Math.min(maxCost ?? Infinity, 80);
-    if ((maxTemperature ?? 0) <= 120) {
-      w.thermal = 0.15;
-      w.weight = 0.15;
-      w.cost = 0.35;
-      w.strength = 0.25;
-      w.corrosion = 0.1;
+  for (const [axis, isNegated] of Object.entries(neg)) {
+    if (isNegated) {
+      weights[axis as keyof PriorityWeights] = 0.02;
     }
   }
 
-  if (isSolderAssembly) {
-    maxCost = Math.min(maxCost ?? Infinity, 100);
-    w.thermal = 0.26;
-    w.strength = 0.14;
-    w.weight = 0.05;
-    w.cost = 0.25;
-    w.corrosion = 0.3;
+  const sorted = Object.entries(hits).sort((a, b) => b[1] - a[1]);
+  const [topAxis, topCount] = sorted[0] ?? ["strength", 0];
+  const [secondAxis, secondCount] = sorted[1] ?? ["cost", 0];
+
+  if (topCount >= 1) {
+    for (const axis of Object.keys(weights) as Array<keyof PriorityWeights>) {
+      if (!neg[axis]) {
+        weights[axis] = 0.05;
+      }
+    }
+    if (!neg[topAxis as keyof typeof neg]) {
+      weights[topAxis as keyof PriorityWeights] = 0.65;
+    }
+    if (secondCount >= 1 && !neg[secondAxis as keyof typeof neg]) {
+      weights[secondAxis as keyof PriorityWeights] = 0.2;
+    }
   }
 
-  if (
-    (q.includes("marine") || q.includes("seawater")) &&
-    (q.includes("pump") || q.includes("housing") || q.includes("pressure"))
-  ) {
-    // Seawater equipment should bias toward corrosion-practical alloys rather
-    // than ultra-strong superalloys with irrelevant high-temperature headroom.
-    w.thermal = 0.05;
-    w.strength = 0.1;
-    w.weight = 0.05;
-    w.cost = 0.3;
-    w.corrosion = 0.5;
-    minTensileStrength = 530;
+  if (isCryogenic) {
+    Object.assign(
+      weights,
+      normaliseWeights({
+        thermal: 0.02,
+        strength: 0.45,
+        weight: 0.3,
+        cost: 0.15,
+        corrosion: 0.08
+      })
+    );
   }
+
+  if (/cost\s+not\s+important|expensive\s+ok|no\s+budget\s+limit/.test(q) && hits.strength > 0) {
+    Object.assign(
+      weights,
+      normaliseWeights({
+        thermal: 0.12,
+        strength: 0.62,
+        weight: 0.08,
+        cost: 0.02,
+        corrosion: 0.16
+      })
+    );
+  }
+
+  if (hasAnySignal(q, FDM_SIGNALS) && q.includes("motor")) {
+    Object.assign(
+      weights,
+      normaliseWeights({
+        thermal: 0.42,
+        strength: 0.18,
+        weight: 0.18,
+        cost: 0.12,
+        corrosion: 0.1
+      })
+    );
+  }
+
+  if (/marine|seawater|saltwater|salt water/.test(q)) {
+    weights.corrosion = Math.max(weights.corrosion, 0.6);
+    weights.cost = Math.min(weights.cost, 0.12);
+    weights.weight = neg.weight ? 0.02 : Math.min(weights.weight, 0.1);
+  }
+
+  if (/machin/.test(q)) {
+    weights.cost = Math.max(weights.cost, 0.2);
+    weights.strength = Math.min(weights.strength, 0.24);
+  }
+
+  const needsFDM = hasAnySignal(q, FDM_SIGNALS);
+  const needsConductive = hasAnySignal(q, ELECTRICAL_SIGNALS);
+  const thermalManagement = needsThermalConductivity(q);
+  const thermalInsulation = needsThermalInsulation(q);
+  const budget = chooseBudget(q);
+  const corrosionRequired =
+    /highly\s+corrosive|strong\s+acid|concentrated\s+acid/.test(q)
+      ? ("excellent" as const)
+      : /marine|seawater|salt\s*water|corrosion\s+resist/.test(q)
+        ? ("good" as const)
+        : undefined;
 
   return {
-    maxTemperature_c: maxTemperature,
-    minTensileStrength_mpa: minTensileStrength,
-    needsFDMPrintability: needsFDM || undefined,
-    electricallyConductive: needsConductive || undefined,
+    maxTemperature_c: chooseTemperature(q, isCryogenic),
+    minTensileStrength_mpa:
+      /load bearing|structural|strongest possible|high strength/.test(q) && !neg.strength
+        ? 250
+        : /probe tip|probe|electrode|contact/.test(q)
+          ? 200
+          : /biomedical|implant/.test(q)
+            ? 450
+            : undefined,
+    maxDensity_g_cm3: hits.weight > 0 && !neg.weight ? 3.5 : undefined,
+    maxCost_usd_kg: budget,
+    maxElectricalResistivity_ohm_m:
+      /probe|electrode|contact|connector|conductive|electrical/.test(q) ? 1e-4 : undefined,
+    minElectricalResistivity_ohm_m:
+      /electrical insulat|dielectric|electrically insulating|non-conductive/.test(q)
+        ? 1e6
+        : undefined,
+    minThermalConductivity_w_mk: thermalManagement ? 20 : undefined,
+    maxThermalConductivity_w_mk: thermalInsulation ? 5 : undefined,
+    maxThermalExpansion_ppm_k: /bga|thermal cycling|expansion mismatch|package/.test(q)
+      ? 20
+      : undefined,
     corrosionRequired,
-    maxDensity_g_cm3: maxDensity,
-    maxCost_usd_kg: Number.isFinite(maxCost) ? maxCost : undefined,
-    priorityWeights: normaliseWeights(w),
-    rawQuery: query
+    electricallyConductive:
+      /electrical insulat|dielectric|electrically insulating|non-conductive/.test(q)
+        ? false
+        : needsConductive || undefined,
+    thermallyConductive: thermalInsulation ? false : thermalManagement || undefined,
+    needsFDMPrintability: needsFDM || undefined,
+    requiresFatigueWarning: /fatigue|cycling|vibration|bga/.test(q) || undefined,
+    priorityWeights: normaliseWeights(weights),
+    rawQuery: query,
+    _negatedAxes: Object.entries(neg)
+      .filter(([, value]) => value)
+      .map(([axis]) => axis)
   };
 }
 
-export async function extractConstraints(
-  query: string
-): Promise<UserConstraints> {
-  try {
-    const genAI = getClient();
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash"
-    });
-    const prompt = `You are a materials science expert.
-Extract engineering constraints from the user description.
-Return ONLY a valid JSON object — no markdown, no backticks,
-no text before or after the JSON.
+export function validateWeights(constraints: UserConstraints): UserConstraints {
+  const w = normaliseWeights(constraints.priorityWeights);
+  const maxW = Math.max(...Object.values(w));
+  if (maxW >= 0.3) {
+    return { ...constraints, priorityWeights: w };
+  }
 
-Required shape (omit fields you cannot infer):
+  const heuristic = heuristicExtract(constraints.rawQuery ?? "");
+  const heuristicMax = Math.max(...Object.values(heuristic.priorityWeights));
+  if (heuristicMax > maxW) {
+    return {
+      ...constraints,
+      priorityWeights: heuristic.priorityWeights,
+      _negatedAxes: heuristic._negatedAxes
+    };
+  }
+
+  return { ...constraints, priorityWeights: w };
+}
+
+export async function extractConstraints(query: string): Promise<UserConstraints> {
+  const heuristic = heuristicExtract(query);
+
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      return validateWeights(heuristic);
+    }
+
+    const model = getClient().getGenerativeModel({ model: "gemini-2.0-flash" });
+    const prompt = `You are a materials science expert for
+MET-QUEST'26. Extract engineering constraints from the query.
+Return ONLY valid JSON. No markdown, no backticks, no extra text.
+
+POSITIVE WEIGHT RULES (boost to >= 0.60):
+  "cheap/budget/affordable/low cost" -> cost >= 0.60
+  "lightweight/low density/drone/aircraft" -> weight >= 0.60
+  "strong/structural/high strength/load bearing" -> strength >= 0.60
+  "heat resistant/high temp/motor/furnace/thermal" -> thermal >= 0.60
+  "marine/seawater/acid/corrosion resistant" -> corrosion >= 0.60
+
+NEGATION RULES (set axis to 0.02-0.05):
+  "low strength/weak/soft/flexible/ductile" -> strength = 0.02
+  "cost not important/expensive ok/no budget limit" -> cost = 0.02
+  "cryogenic/liquid nitrogen/cold environment" -> thermal = 0.02
+    AND set maxTemperature_c to 25
+  "heavy ok/weight not important" -> weight = 0.02
+  "indoor/dry/corrosion not needed" -> corrosion = 0.02
+
+CRYOGENIC SPECIAL CASE:
+  User wants materials that survive -196C liquid nitrogen.
+  Set maxTemperature_c: 25 (they only need room temp max).
+  Set thermal weight: 0.02.
+  Boost strength: 0.45, weight: 0.30, cost: 0.15.
+  Good choices: Al 5083, 316L SS, PTFE, Invar, Cu alloys.
+
+NEVER use balanced weights (0.20 each) unless no signal at all.
+Weights MUST sum to exactly 1.0.
+
+JSON schema (omit fields you cannot infer):
 {
   "maxTemperature_c": number,
   "minTensileStrength_mpa": number,
   "maxDensity_g_cm3": number,
   "maxCost_usd_kg": number,
-  "corrosionRequired": "excellent" | "good" | "fair",
+  "corrosionRequired": "excellent"|"good"|"fair",
   "electricallyConductive": boolean,
   "thermallyConductive": boolean,
   "needsFDMPrintability": boolean,
   "priorityWeights": {
-    "thermal": number,
-    "strength": number,
-    "weight": number,
-    "cost": number,
-    "corrosion": number
+    "thermal": number, "strength": number,
+    "weight": number, "cost": number, "corrosion": number
   }
 }
 
-IMPORTANT: priorityWeights must sum to exactly 1.0.
-Infer weights from emphasis: "absolutely cannot warp" means
-thermal weight >= 0.35. "lightweight" means weight >= 0.35.
-"cheap" or "budget" means cost >= 0.40.
-CRITICAL WEIGHT RULES:
-- If the user says "cheapest", "lowest cost", or "cheapest possible",
-  set cost weight >= 0.60.
-- If the query is mainly about seawater or marine exposure,
-  set corrosion weight >= 0.40.
-- If the query is about 3D printing on a desktop printer,
-  prefer practical printable polymers instead of ultra-premium materials
-  unless the user explicitly asks for aerospace/high-temperature parts.
-
-User: ${query}`;
+User query: ${query}`;
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-    const clean = text
-      .replace(/^```json\s*/, "")
-      .replace(/^```\s*/, "")
-      .replace(/\s*```$/, "")
-      .trim();
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
     const parsed = JSON.parse(clean) as Partial<UserConstraints>;
-    parsed.priorityWeights = normaliseWeights(
-      (parsed.priorityWeights as UserConstraints["priorityWeights"]) ?? {
-        thermal: 0.15,
-        strength: 0.3,
-        weight: 0.15,
-        cost: 0.3,
-        corrosion: 0.1
-      }
-    );
-    return validateAndCorrectWeights({
-      ...parsed,
-      rawQuery: query
-    } as UserConstraints);
+
+    const merged: UserConstraints = {
+      maxTemperature_c: parseNumber(parsed.maxTemperature_c) ?? heuristic.maxTemperature_c,
+      minTensileStrength_mpa:
+        parseNumber(parsed.minTensileStrength_mpa) ?? heuristic.minTensileStrength_mpa,
+      maxDensity_g_cm3: parseNumber(parsed.maxDensity_g_cm3) ?? heuristic.maxDensity_g_cm3,
+      maxCost_usd_kg: parseNumber(parsed.maxCost_usd_kg) ?? heuristic.maxCost_usd_kg,
+      maxElectricalResistivity_ohm_m:
+        parseNumber(parsed.maxElectricalResistivity_ohm_m) ??
+        heuristic.maxElectricalResistivity_ohm_m,
+      minElectricalResistivity_ohm_m:
+        parseNumber(parsed.minElectricalResistivity_ohm_m) ??
+        heuristic.minElectricalResistivity_ohm_m,
+      minThermalConductivity_w_mk:
+        parseNumber(parsed.minThermalConductivity_w_mk) ??
+        heuristic.minThermalConductivity_w_mk,
+      maxThermalConductivity_w_mk:
+        parseNumber(parsed.maxThermalConductivity_w_mk) ??
+        heuristic.maxThermalConductivity_w_mk,
+      maxThermalExpansion_ppm_k:
+        parseNumber(parsed.maxThermalExpansion_ppm_k) ?? heuristic.maxThermalExpansion_ppm_k,
+      corrosionRequired:
+        parsed.corrosionRequired === "excellent" ||
+        parsed.corrosionRequired === "good" ||
+        parsed.corrosionRequired === "fair"
+          ? parsed.corrosionRequired
+          : heuristic.corrosionRequired,
+      electricallyConductive:
+        parseBoolean(parsed.electricallyConductive) ?? heuristic.electricallyConductive,
+      thermallyConductive:
+        parseBoolean(parsed.thermallyConductive) ?? heuristic.thermallyConductive,
+      needsFDMPrintability:
+        parseBoolean(parsed.needsFDMPrintability) ?? heuristic.needsFDMPrintability,
+      requiresFatigueWarning:
+        parseBoolean(parsed.requiresFatigueWarning) ?? heuristic.requiresFatigueWarning,
+      priorityWeights: normaliseWeights(
+        (parsed.priorityWeights as PriorityWeights) ?? heuristic.priorityWeights
+      ),
+      rawQuery: query,
+      _negatedAxes: heuristic._negatedAxes
+    };
+
+    return validateWeights(merged);
   } catch {
-    return validateAndCorrectWeights(heuristicExtract(query));
+    return validateWeights(heuristic);
   }
 }
 
@@ -524,45 +586,39 @@ export async function generateExplanation(
   const localFallback = generateLocalExplanation(query, ranked);
 
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY || ranked.length === 0) {
       return localFallback;
     }
 
-    const genAI = getClient();
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash"
-    });
-    const ctx = ranked
+    const model = getClient().getGenerativeModel({ model: "gemini-2.0-flash" });
+    const context = ranked
       .slice(0, 5)
       .map(
-        (m, i) =>
-          `${i + 1}. ${m.name} — Score ${m.score}/100 | ` +
-          `Max service temp: ${m.max_service_temp_c}°C | ` +
-          `Tensile: ${m.tensile_strength_mpa} MPa | ` +
-          `Density: ${m.density_g_cm3} g/cm³ | ` +
-          `Cost: $${m.cost_usd_kg}/kg | ` +
-          `Category: ${m.category}`
+        (material, index) =>
+          `${index + 1}. ${material.name} | score ${material.score}/100 | max temp ${displayNumber(material.max_service_temp_c, "C")} | ` +
+          `tensile ${displayNumber(material.tensile_strength_mpa, " MPa")} | density ${displayNumber(material.density_g_cm3, " g/cm3", 2)} | ` +
+          `cost $${displayNumber(material.cost_usd_kg, "", 2)}/kg | corrosion ${material.corrosion_resistance ?? "unknown"} | FDM ${material.printability_fdm}`
       )
       .join("\n");
 
     const prompt =
-      `You are a virtual materials scientist advising an engineer.\n` +
-      `Problem: "${query}"\nRanked candidates:\n${ctx}\n\n` +
-      `Write exactly 3 paragraphs with NO bullet points:\n` +
-      `Begin your first paragraph with: "Based on your query, the top recommendation is [MATERIAL NAME]..."\n` +
-      `Reference materials by exact name throughout. Do not use vague phrases like "the selected material".\n` +
-      `1. Why #1 is recommended — cite specific property values.\n` +
-      `2. Compare #1 vs #2 vs #3 — when would each be preferred?\n` +
-      `3. Important caveats the engineer must know before ordering.`;
+      `You are a materials scientist advising an engineer.\n` +
+      `User query: ${query}\n` +
+      `Candidate shortlist:\n${context}\n\n` +
+      `Write exactly 3 short paragraphs with no bullet points.\n` +
+      `Paragraph 1: explain why the top-ranked material wins.\n` +
+      `Paragraph 2: compare the top three materials with concrete tradeoffs.\n` +
+      `Paragraph 3: give engineering caveats and procurement checks.\n`;
 
     const chat = model.startChat({
-      history: (history ?? []).map((h) => ({
-        role: h.role as "user" | "model",
-        parts: [{ text: h.parts }]
+      history: (history ?? []).map((entry) => ({
+        role: entry.role as "user" | "model",
+        parts: [{ text: entry.parts }]
       }))
     });
-    const res = await chat.sendMessage(prompt);
-    return res.response.text();
+    const response = await chat.sendMessage(prompt);
+    const text = response.response.text().trim();
+    return text || localFallback;
   } catch {
     return localFallback;
   }

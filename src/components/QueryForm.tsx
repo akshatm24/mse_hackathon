@@ -8,10 +8,10 @@ type WeightState = Record<WeightKey, number>;
 interface QueryFormProps {
   onSubmit: (query: string, manualConstraints?: object) => void;
   loading: boolean;
-  apiAvailable: boolean;
   weights: WeightState;
   weightsAutoDetected: boolean;
   hasManualWeightOverride: boolean;
+  negatedAxes: string[];
   onWeightsChange: (weights: WeightState) => void;
   onManualWeightOverride: () => void;
 }
@@ -43,10 +43,10 @@ function toPercent(value: number) {
 export default function QueryForm({
   onSubmit,
   loading,
-  apiAvailable,
   weights,
   weightsAutoDetected,
   hasManualWeightOverride,
+  negatedAxes,
   onWeightsChange,
   onManualWeightOverride
 }: QueryFormProps) {
@@ -154,13 +154,6 @@ export default function QueryForm({
 
   return (
     <div className="mx-auto max-w-[780px] px-4">
-      {!apiAvailable ? (
-        <div className="mb-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-[12px] text-amber-200">
-          Running in deterministic analysis mode with local constraint extraction and
-          scoring.
-        </div>
-      ) : null}
-
       <div className="overflow-hidden rounded-2xl border border-surface-800 bg-surface-900 transition-all duration-200 focus-within:border-amber-500/40 focus-within:shadow-[0_0_0_3px_rgba(245,158,11,0.08)]">
         <textarea
           value={query}
@@ -283,13 +276,28 @@ export default function QueryForm({
             <div className="grid flex-1 gap-3 md:grid-cols-5">
               {propertyMeta.map((item) => (
                 <div key={item.key} className="relative flex flex-col items-center gap-1.5">
+                  {negatedAxes.includes(item.key) ? (
+                    <div
+                      className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.08em] text-rose-300"
+                      title="This priority was explicitly negated in the query, so the scorer intentionally down-weighted it."
+                    >
+                      negated
+                    </div>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() =>
                       setOpenWeight((current) => (current === item.key ? null : item.key))
                     }
-                    className="text-[9px] uppercase tracking-[0.08em]"
-                    style={{ color: item.color }}
+                    className={`text-[9px] uppercase tracking-[0.08em] ${
+                      negatedAxes.includes(item.key) ? "line-through text-rose-300" : ""
+                    }`}
+                    title={
+                      negatedAxes.includes(item.key)
+                        ? "Negated by the query"
+                        : undefined
+                    }
+                    style={{ color: negatedAxes.includes(item.key) ? "#fda4af" : item.color }}
                   >
                     {item.label}
                   </button>
@@ -297,12 +305,17 @@ export default function QueryForm({
                     <div
                       className="h-[2px] rounded-full transition-[width] duration-300"
                       style={{
-                        backgroundColor: item.color,
+                        backgroundColor: negatedAxes.includes(item.key) ? "#fb7185" : item.color,
                         width: `${toPercent(weights[item.key])}%`
                       }}
                     />
                   </div>
-                  <span className="font-mono text-[9px]" style={{ color: item.color }}>
+                  <span
+                    className={`font-mono text-[9px] ${
+                      negatedAxes.includes(item.key) ? "text-rose-300" : ""
+                    }`}
+                    style={{ color: negatedAxes.includes(item.key) ? undefined : item.color }}
+                  >
                     {toPercent(weights[item.key])}%
                   </span>
 

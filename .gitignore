@@ -9,9 +9,21 @@ coverage/
 .env*.local
 .env.production
 .env.development.local
+.env.production.local
 .vercel
 .netlify/
 *.pem
 scripts/mp-materials-raw.json
+scripts/mp-materials-raw-*.json
+scripts/mp-processed.json
+scripts/scraped-materials-merged.json
+scripts/hardcoded-materials.json
+scripts/baseline-materials.json
+scripts/scrape/
+!scripts/scrape/
+!scripts/scrape/*.mjs
+scripts/scrape/*.json
 submission/
+SmartAlloySelectorSubmission/
+SmartAlloySelectorSubmission 2/
 SmartAlloySelectorSubmission.zip

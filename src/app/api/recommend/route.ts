@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { extractConstraints, generateExplanation } from "@/lib/gemini";
+import { extractConstraints, generateExplanation, validateWeights } from "@/lib/gemini";
 import { materialsDB } from "@/lib/materials-db";
-import { retrieveFromCandidates } from "@/lib/rag";
+import { selectFromCandidates } from "@/lib/rag";
 import { scoreMaterials } from "@/lib/scoring";
 import type { UserConstraints } from "@/types";
 
-function normaliseWeights(
-  weights?: Partial<UserConstraints["priorityWeights"]>
-): UserConstraints["priorityWeights"] | undefined {
+function normaliseManualWeights(weights?: Partial<UserConstraints["priorityWeights"]>) {
   if (!weights) {
     return undefined;
   }
@@ -20,6 +18,7 @@ function normaliseWeights(
     cost: weights.cost ?? 0,
     corrosion: weights.corrosion ?? 0
   };
+
   const total =
     merged.thermal +
     merged.strength +
@@ -46,7 +45,6 @@ function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | u
   }
 
   const manual = value as Partial<UserConstraints>;
-
   return {
     maxTemperature_c:
       typeof manual.maxTemperature_c === "number" ? manual.maxTemperature_c : undefined,
@@ -58,130 +56,96 @@ function sanitiseManualConstraints(value: unknown): Partial<UserConstraints> | u
       typeof manual.maxDensity_g_cm3 === "number" ? manual.maxDensity_g_cm3 : undefined,
     maxCost_usd_kg:
       typeof manual.maxCost_usd_kg === "number" ? manual.maxCost_usd_kg : undefined,
-    corrosionRequired:
-      manual.corrosionRequired === "excellent" ||
-      manual.corrosionRequired === "good" ||
-      manual.corrosionRequired === "fair"
-        ? manual.corrosionRequired
-        : undefined,
-    electricallyConductive:
-      typeof manual.electricallyConductive === "boolean"
-        ? manual.electricallyConductive
-        : undefined,
-    thermallyConductive:
-      typeof manual.thermallyConductive === "boolean"
-        ? manual.thermallyConductive
-        : undefined,
     needsFDMPrintability:
       typeof manual.needsFDMPrintability === "boolean"
         ? manual.needsFDMPrintability
         : undefined,
-    priorityWeights: normaliseWeights(manual.priorityWeights)
+    priorityWeights: normaliseManualWeights(manual.priorityWeights)
   };
 }
 
-function mergeConstraints(
-  base: UserConstraints,
-  overrides?: Partial<UserConstraints>
-): UserConstraints {
-  if (!overrides) {
+function mergeConstraints(base: UserConstraints, manual?: Partial<UserConstraints>) {
+  if (!manual) {
     return base;
   }
 
   return {
-    maxTemperature_c: overrides.maxTemperature_c ?? base.maxTemperature_c,
-    minTensileStrength_mpa:
-      overrides.minTensileStrength_mpa ?? base.minTensileStrength_mpa,
-    maxDensity_g_cm3: overrides.maxDensity_g_cm3 ?? base.maxDensity_g_cm3,
-    maxCost_usd_kg: overrides.maxCost_usd_kg ?? base.maxCost_usd_kg,
-    corrosionRequired: overrides.corrosionRequired ?? base.corrosionRequired,
-    electricallyConductive:
-      overrides.electricallyConductive ?? base.electricallyConductive,
-    thermallyConductive:
-      overrides.thermallyConductive ?? base.thermallyConductive,
-    needsFDMPrintability:
-      overrides.needsFDMPrintability ?? base.needsFDMPrintability,
-    priorityWeights: overrides.priorityWeights ?? base.priorityWeights,
-    rawQuery: overrides.rawQuery ?? base.rawQuery
+    ...base,
+    ...manual,
+    priorityWeights: manual.priorityWeights ?? base.priorityWeights,
+    _negatedAxes: base._negatedAxes,
+    rawQuery: base.rawQuery
   };
 }
 
-async function buildRecommendationResponse({
-  query,
-  history,
-  manualConstraints
-}: {
-  query: string;
-  history?: { role: string; parts: string }[];
-  manualConstraints?: Partial<UserConstraints>;
-}) {
-  // Step 1: extract intent and weights from the natural-language query.
-  const constraints = await extractConstraints(query);
-  const effectiveConstraints = mergeConstraints(
-    constraints,
-    manualConstraints ? { ...manualConstraints, rawQuery: query } : undefined
+async function buildResponse(
+  query: string,
+  history?: { role: string; parts: string }[],
+  manualConstraints?: Partial<UserConstraints>
+) {
+  let constraints = await extractConstraints(query);
+  constraints = validateWeights(constraints);
+  constraints = mergeConstraints(constraints, manualConstraints);
+
+  const rankedMaterials = scoreMaterials(constraints, materialsDB);
+  const ragContext = selectFromCandidates(
+    query,
+    rankedMaterials.slice(0, 10),
+    constraints._negatedAxes ?? [],
+    5
   );
-
-  // Step 2: score the entire database. This is the single source of truth.
-  const rankedMaterials = scoreMaterials(effectiveConstraints, materialsDB);
-
-  // Step 3: RAG only re-orders the scored shortlist for explanation context.
-  const ragContext = await retrieveFromCandidates(query, rankedMaterials.slice(0, 10), 5);
-
-  // Step 4: explain the same shortlisted materials the user can see below.
   const llmExplanation = await generateExplanation(query, ragContext, history);
 
   return {
     rankedMaterials,
     llmExplanation,
-    inferredConstraints: effectiveConstraints,
-    clarifications: "Constraints auto-detected from your query.",
+    inferredConstraints: constraints,
+    clarifications: "Constraints auto-detected from query.",
     matchCount: rankedMaterials.length,
-    ragMaterials: ragContext.map((material) => material.name)
+    ragMaterials: ragContext.map((material) => material.name),
+    warnings: Array.from(new Set(rankedMaterials.flatMap((material) => material.warnings ?? []))).slice(
+      0,
+      6
+    )
   };
 }
 
 export async function GET(req: NextRequest) {
   try {
     const query = req.nextUrl.searchParams.get("query");
-
-    if (!query || !query.trim()) {
-      return NextResponse.json({ error: "query is required" }, { status: 400 });
+    if (!query?.trim()) {
+      return NextResponse.json({ error: "query required" }, { status: 400 });
     }
 
-    const data = await buildRecommendationResponse({ query: query.trim() });
+    const data = await buildResponse(query.trim());
     return NextResponse.json(data);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error";
-    console.error("recommend error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const msg = err instanceof Error ? err.message : "Error";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
+    const { query, history, manualConstraints } = (await req.json()) as {
       query: string;
       history?: { role: string; parts: string }[];
       manualConstraints?: Partial<UserConstraints>;
     };
 
-    const { query, history } = body;
-
-    if (!query || typeof query !== "string" || !query.trim()) {
-      return NextResponse.json({ error: "query is required" }, { status: 400 });
+    if (!query?.trim()) {
+      return NextResponse.json({ error: "query required" }, { status: 400 });
     }
 
-    const data = await buildRecommendationResponse({
-      query: query.trim(),
+    const data = await buildResponse(
+      query.trim(),
       history,
-      manualConstraints: sanitiseManualConstraints(body.manualConstraints)
-    });
+      sanitiseManualConstraints(manualConstraints)
+    );
 
     return NextResponse.json(data);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error";
-    console.error("recommend error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const msg = err instanceof Error ? err.message : "Error";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
