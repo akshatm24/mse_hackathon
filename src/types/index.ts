@@ -32,12 +32,19 @@ export interface Material {
   source_url?: string | null;
   scrape_url?: string | null;
   data_quality?:
+    | "validated"
+    | "curated"
     | "experimental"
     | "scraped"
     | "hardcoded-cited"
     | "estimated"
     | "mp-calculated";
-  source_kind?: "curated" | "materials-project";
+  source_kind?:
+    | "curated"
+    | "hardcoded"
+    | "validated"
+    | "mp"
+    | "materials-project";
   formula_pretty?: string;
   material_id?: string;
   energy_above_hull?: number | null;
@@ -80,6 +87,13 @@ export interface RankedMaterial extends Material {
   score: number;
   matchReason: string;
   warnings?: string[];
+  normalizedScores: {
+    thermal: number;
+    strength: number;
+    weight: number;
+    cost: number;
+    corrosion: number;
+  };
 }
 
 export interface ChatMessage {
@@ -115,4 +129,14 @@ export interface PredictorResponse {
   };
   nearestAnalogs?: Material[];
   predictedCategory?: Material["category"];
+}
+
+export interface PredictorMatchResponse {
+  parsedFormula: string;
+  elementFractions: Record<string, number>;
+  compound: Material;
+  analogue: Material;
+  alternatives: Material[];
+  explanation: string;
+  confidence: number;
 }

@@ -3,8 +3,9 @@
 import { Check, Clipboard } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import ScoreBreakdown from "@/components/ScoreBreakdown";
 import { dataQualityLabel, formatNullable, sourceBadge } from "@/lib/material-display";
-import { RankedMaterial } from "@/types";
+import type { RankedMaterial, UserConstraints } from "@/types";
 
 interface MaterialCardProps {
   material: RankedMaterial;
@@ -13,55 +14,27 @@ interface MaterialCardProps {
   onToggle: () => void;
   compareDisabled?: boolean;
   staggerIndex?: number;
+  weights: UserConstraints["priorityWeights"];
 }
 
 function categoryTone(category: RankedMaterial["category"]) {
-  if (category === "Metal") {
-    return "border-blue-800 bg-[#1E3A5F] text-sky-400";
-  }
-  if (category === "Polymer") {
-    return "border-green-800 bg-[#14532D] text-emerald-400";
-  }
-  if (category === "Ceramic") {
-    return "border-violet-900 bg-[#3B1F6E] text-violet-400";
-  }
-  if (category === "Composite") {
-    return "border-orange-900 bg-[#44240C] text-orange-400";
-  }
-  return "border-rose-900 bg-[#3B1111] text-rose-400";
+  if (category === "Metal") return "border-blue-800 bg-[#1E3A5F] text-sky-400";
+  if (category === "Polymer") return "border-green-800 bg-[#14532D] text-emerald-400";
+  if (category === "Ceramic") return "border-red-900 bg-[#3F1616] text-rose-300";
+  if (category === "Composite") return "border-orange-900 bg-[#44240C] text-orange-400";
+  return "border-violet-900 bg-[#3B1F6E] text-violet-400";
 }
 
 function rankTone(rank: number) {
-  if (rank === 1) {
-    return "bg-brand text-brand-subtle";
-  }
-  if (rank === 2) {
-    return "bg-surface-800 text-surface-400";
-  }
+  if (rank === 1) return "bg-brand text-brand-subtle";
+  if (rank === 2) return "bg-surface-800 text-surface-400";
   return "bg-[#1F1F23] text-surface-600";
 }
 
 function scoreTone(score: number) {
-  if (score >= 80) {
-    return "#F59E0B";
-  }
-  if (score >= 60) {
-    return "#38BDF8";
-  }
+  if (score >= 80) return "#F59E0B";
+  if (score >= 60) return "#38BDF8";
   return "#34D399";
-}
-
-function costTone(cost: number | null) {
-  if (cost === null) {
-    return "#A1A1AA";
-  }
-  if (cost < 10) {
-    return "#34D399";
-  }
-  if (cost <= 50) {
-    return "#A1A1AA";
-  }
-  return "#FB7185";
 }
 
 export default function MaterialCard({
@@ -70,7 +43,8 @@ export default function MaterialCard({
   selected,
   onToggle,
   compareDisabled = false,
-  staggerIndex = 0
+  staggerIndex = 0,
+  weights
 }: MaterialCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [barReady, setBarReady] = useState(false);
@@ -101,7 +75,16 @@ export default function MaterialCard({
   async function copySummary() {
     try {
       await navigator.clipboard.writeText(
-        `Material: ${material.name} | Score: ${material.score}/100 | Max Temp: ${formatNullable(material.max_service_temp_c, { suffix: "°C" })} | Density: ${formatNullable(material.density_g_cm3, { digits: 2, suffix: " g/cm³" })} | Cost: ${formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$", suffix: "/kg" })}`
+        `Material: ${material.name} | Score: ${material.score}/100 | Max Temp: ${formatNullable(material.max_service_temp_c, {
+          suffix: "°C"
+        })} | Density: ${formatNullable(material.density_g_cm3, {
+          digits: 2,
+          suffix: " g/cm³"
+        })} | Cost: ${formatNullable(material.cost_usd_kg, {
+          digits: 2,
+          prefix: "$",
+          suffix: "/kg"
+        })}`
       );
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
@@ -114,28 +97,13 @@ export default function MaterialCard({
     ["Subcategory", material.subcategory],
     ["Yield Strength", formatNullable(material.yield_strength_mpa, { suffix: " MPa" })],
     ["Elastic Modulus", formatNullable(material.elastic_modulus_gpa, { digits: 1, suffix: " GPa" })],
-    ["Hardness", material.hardness_vickers === null ? "—" : `${material.hardness_vickers} HV`],
-    [
-      "Thermal Conductivity",
-      formatNullable(material.thermal_conductivity_w_mk, { digits: 2, suffix: " W/m·K" })
-    ],
+    ["Hardness", formatNullable(material.hardness_vickers, { suffix: " HV" })],
+    ["Thermal Conductivity", formatNullable(material.thermal_conductivity_w_mk, { digits: 2, suffix: " W/m·K" })],
     ["Specific Heat", formatNullable(material.specific_heat_j_gk, { digits: 2, suffix: " J/g·K" })],
-    [
-      "Melting Point",
-      formatNullable(material.melting_point_c, { suffix: "°C" })
-    ],
-    [
-      "Glass Transition",
-      formatNullable(material.glass_transition_c, { suffix: "°C" })
-    ],
-    [
-      "Thermal Expansion",
-      formatNullable(material.thermal_expansion_ppm_k, { digits: 1, suffix: " ppm/K" })
-    ],
-    [
-      "Resistivity",
-      formatNullable(material.electrical_resistivity_ohm_m, { digits: 2, scientific: true, suffix: " Ω·m" })
-    ],
+    ["Melting Point", formatNullable(material.melting_point_c, { suffix: "°C" })],
+    ["Glass Transition", formatNullable(material.glass_transition_c, { suffix: "°C" })],
+    ["Thermal Expansion", formatNullable(material.thermal_expansion_ppm_k, { digits: 1, suffix: " ppm/K" })],
+    ["Resistivity", formatNullable(material.electrical_resistivity_ohm_m, { digits: 2, scientific: true, suffix: " Ω·m" })],
     ["Corrosion", material.corrosion_resistance ?? "—"],
     ["Machinability", material.machinability],
     ["FDM Printability", material.printability_fdm],
@@ -155,9 +123,7 @@ export default function MaterialCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <span
-            className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${rankTone(rank)}`}
-          >
+          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${rankTone(rank)}`}>
             #{rank}
           </span>
           <h3 className="mt-1.5 text-[15px] font-semibold text-zinc-100">{material.name}</h3>
@@ -191,10 +157,7 @@ export default function MaterialCard({
             />
           </label>
           <div className="text-right">
-            <div
-              className="font-mono text-[22px] font-bold"
-              style={{ color: scoreTone(material.score) }}
-            >
+            <div className="font-mono text-[22px] font-bold" style={{ color: scoreTone(material.score) }}>
               {displayScore}
             </div>
             <div className="text-[10px] text-surface-700">/100</div>
@@ -212,43 +175,19 @@ export default function MaterialCard({
         />
       </div>
 
-      <button
-        type="button"
-        onClick={() => setExpanded((current) => !current)}
-        className="w-full text-left"
-      >
+      <button type="button" onClick={() => setExpanded((current) => !current)} className="w-full text-left">
         <div className="grid grid-cols-2 gap-1">
           {[
-            { label: "Max Temp", value: formatNullable(material.max_service_temp_c, { suffix: "°C" }), color: "#F4F4F5" },
-            {
-              label: "Density",
-              value: formatNullable(material.density_g_cm3, { digits: 2, suffix: " g/cm³" }),
-              color: "#F4F4F5"
-            },
-            {
-              label: "Tensile",
-              value: formatNullable(material.tensile_strength_mpa, { suffix: " MPa" }),
-              color: "#F4F4F5"
-            },
-            {
-              label: "Cost",
-              value: formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$", suffix: "/kg" }),
-              color: costTone(material.cost_usd_kg)
-            }
+            { label: "Max Temp", value: formatNullable(material.max_service_temp_c, { suffix: "°C" }) },
+            { label: "Density", value: formatNullable(material.density_g_cm3, { digits: 2, suffix: " g/cm³" }) },
+            { label: "Tensile", value: formatNullable(material.tensile_strength_mpa, { suffix: " MPa" }) },
+            { label: "Cost", value: formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$", suffix: "/kg" }) }
           ].map((property) => (
-            <div
-              key={property.label}
-              className="rounded-md border border-brand-subtle bg-[#0C0A09] px-2 py-1.5"
-            >
+            <div key={property.label} className="rounded-md border border-brand-subtle bg-[#0C0A09] px-2 py-1.5">
               <div className="text-[9px] uppercase tracking-[0.08em] text-surface-700">
                 {property.label}
               </div>
-              <div
-                className="font-mono text-[12px] font-medium"
-                style={{ color: property.color }}
-              >
-                {property.value}
-              </div>
+              <div className="font-mono text-[12px] font-medium text-zinc-100">{property.value}</div>
             </div>
           ))}
         </div>
@@ -270,10 +209,7 @@ export default function MaterialCard({
         ) : null}
       </button>
 
-      <div
-        className="overflow-hidden transition-[max-height] duration-300 ease-out"
-        style={{ maxHeight: expanded ? 500 : 0 }}
-      >
+      <div className="overflow-hidden transition-[max-height] duration-300 ease-out" style={{ maxHeight: expanded ? 720 : 0 }}>
         <div className="pt-3">
           <div className="mb-2 flex justify-end">
             <button
@@ -288,7 +224,15 @@ export default function MaterialCard({
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
-          <div className="grid gap-x-3 md:grid-cols-2">
+
+          <div className="rounded-md border border-surface-800 bg-[#0C0A09] px-3 py-3">
+            <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-surface-600">
+              Score Breakdown
+            </div>
+            <ScoreBreakdown weights={weights} normalized={material.normalizedScores} />
+          </div>
+
+          <div className="mt-3 grid gap-x-3 md:grid-cols-2">
             {properties.map(([label, value], index) => (
               <div
                 key={label}
@@ -302,42 +246,20 @@ export default function MaterialCard({
             ))}
           </div>
 
-          <div className="mt-3 rounded-md border-l-2 border-brand bg-[#0C0A09] px-2 py-2">
-            <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-brand">
-              Why Recommended
+          {material.source_url ? (
+            <a
+              href={material.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 hover:underline"
+            >
+              View datasheet →
+            </a>
+          ) : (
+            <div className="mt-3 text-right text-[10px] italic text-surface-700">
+              Source: {material.data_source}
             </div>
-            <p className="mt-1 text-[11px] leading-[1.5] text-surface-400">
-              {material.matchReason}
-            </p>
-          </div>
-
-          {material.warnings && material.warnings.length > 0 ? (
-            <div className="mt-3 rounded-md border-l-2 border-amber-500 bg-[#1A1207] px-2 py-2">
-              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-amber-300">
-                Watchouts
-              </div>
-              <div className="mt-1 space-y-1 text-[11px] leading-[1.5] text-amber-100">
-                {material.warnings.map((warning) => (
-                  <p key={warning}>{warning}</p>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {material.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-surface-800 px-2 py-0.5 text-[10px] text-surface-600"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          <div className="mt-3 text-right text-[10px] italic text-surface-700">
-            Source: {material.data_source}
-          </div>
+          )}
         </div>
       </div>
     </article>

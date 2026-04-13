@@ -3,16 +3,16 @@
 import { AlertTriangle } from "lucide-react";
 import { startTransition, useEffect, useRef, useState } from "react";
 
+import AshbyPlot from "@/components/AshbyPlot";
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Header from "@/components/Header";
 import NovelAlloyPredictor from "@/components/NovelAlloyPredictor";
 import QueryForm from "@/components/QueryForm";
 import ResultsPanel from "@/components/ResultsPanel";
-import materialsDB, { materialCount } from "@/lib/materials-db";
-import { sourceCount } from "@/lib/material-display";
 import type { RecommendResponse, UserConstraints } from "@/types";
 
 type WeightState = UserConstraints["priorityWeights"];
+type ExploreTab = "database" | "ashby" | "predictor";
 
 const DEFAULT_WEIGHTS: WeightState = {
   strength: 0.3,
@@ -25,8 +25,8 @@ const DEFAULT_WEIGHTS: WeightState = {
 function buildLoadingSteps(totalMaterials: number) {
   return [
     "Extracting constraints...",
-    `Scoring ${totalMaterials} materials...`,
-    "Selecting best candidates (RAG)...",
+    `Scoring ${totalMaterials.toLocaleString()} materials...`,
+    "Deduplicating and ranking candidates...",
     "Generating explanation..."
   ];
 }
@@ -46,10 +46,44 @@ export default function HomePage() {
   const [weightsAutoDetected, setWeightsAutoDetected] = useState(false);
   const [hasManualWeightOverride, setHasManualWeightOverride] = useState(false);
   const [negatedAxes, setNegatedAxes] = useState<string[]>([]);
+  const [exploreTab, setExploreTab] = useState<ExploreTab>("database");
+  const [materialStats, setMaterialStats] = useState({
+    materialCount: 0,
+    totalSources: 0
+  });
   const querySectionRef = useRef<HTMLElement | null>(null);
-  const totalSources = sourceCount(materialsDB);
 
-  const loadingSteps = buildLoadingSteps(materialCount);
+  const loadingSteps = buildLoadingSteps(materialStats.materialCount);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadStats() {
+      try {
+        const response = await fetch("/api/materials?scope=stats");
+        const payload = (await response.json()) as {
+          materialCount?: number;
+          totalSources?: number;
+        };
+
+        if (active) {
+          setMaterialStats({
+            materialCount: payload.materialCount ?? 0,
+            totalSources: payload.totalSources ?? 0
+          });
+        }
+      } catch {
+        if (active) {
+          setMaterialStats({ materialCount: 0, totalSources: 0 });
+        }
+      }
+    }
+
+    void loadStats();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -62,7 +96,7 @@ export default function HomePage() {
       setLoadingStepIndex((current) =>
         current < loadingSteps.length - 1 ? current + 1 : current
       );
-    }, 600);
+    }, 650);
 
     return () => window.clearInterval(interval);
   }, [loading, loadingSteps.length]);
@@ -108,14 +142,11 @@ export default function HomePage() {
     try {
       const response = await fetch("/api/recommend", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, manualConstraints: manual })
       });
 
       const data = (await response.json()) as RecommendResponse & { error?: string };
-
       if (!response.ok) {
         throw new Error(data.error ?? "Something went wrong. Please try again.");
       }
@@ -128,8 +159,7 @@ export default function HomePage() {
       startTransition(() => setResults(data));
       setSearchDurationMs(performance.now() - started);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong";
-      setError(message);
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -143,7 +173,7 @@ export default function HomePage() {
         <div className="fixed left-0 right-0 top-[52px] z-40 border-b border-surface-800 bg-surface-900/95 backdrop-blur-sm">
           <div className="mx-auto max-w-6xl px-4 py-2 text-[11px] text-surface-400">
             Showing top {Math.min(5, results.rankedMaterials.length)} of{" "}
-            {results.matchCount ?? results.rankedMaterials.length} results for:{" "}
+            {results.matchCount ?? results.rankedMaterials.length} results for{" "}
             <span className="text-zinc-100">{lastQuery || "current constraints"}</span>
           </div>
         </div>
@@ -167,17 +197,18 @@ export default function HomePage() {
             <h1 className="mt-5 text-[36px] font-bold tracking-tight text-zinc-100">
               Find the right material. <span className="text-brand">Fast.</span>
             </h1>
-            <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.7] text-zinc-500">
-              Describe your engineering challenge in plain English. The AI extracts
-              constraints and ranks {materialCount.toLocaleString()} materials spanning curated,
-              cited, scraped, and Materials Project engineering datasets.
+            <p className="mx-auto mt-4 max-w-[560px] text-[14px] leading-[1.7] text-zinc-500">
+              Describe your engineering challenge in plain English. The app extracts
+              constraints, ranks {materialStats.materialCount.toLocaleString()} deduplicated materials,
+              and separates engineering grades from Materials Project compounds so each
+              workflow stays focused.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
               {[
-                [materialCount.toLocaleString(), "Materials"],
+                [materialStats.materialCount.toLocaleString(), "Materials"],
                 ["5", "Categories"],
-                [String(totalSources), "Sources"]
+                [String(materialStats.totalSources), "Source Groups"]
               ].map(([value, label], index) => (
                 <div key={label} className="flex items-center gap-6">
                   <div>
@@ -219,10 +250,7 @@ export default function HomePage() {
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               {[0, 1, 2].map((card) => (
-                <div
-                  key={card}
-                  className="rounded-xl border border-surface-800 bg-surface-900 p-4"
-                >
+                <div key={card} className="rounded-xl border border-surface-800 bg-surface-900 p-4">
                   <div className="shimmer h-3.5 w-[40%] rounded" />
                   <div className="shimmer mt-2 h-2.5 w-[25%] rounded" />
                   <div className="shimmer mt-4 h-[3px] w-[60%] rounded" />
@@ -262,20 +290,35 @@ export default function HomePage() {
 
         {results ? (
           <section className="mx-auto mt-8 max-w-6xl px-4">
-            <ResultsPanel
-              data={results}
-              query={lastQuery}
-              searchDurationMs={searchDurationMs}
-            />
+            <ResultsPanel data={results} query={lastQuery} searchDurationMs={searchDurationMs} />
           </section>
         ) : null}
 
-        <section id="database" className="mx-auto mt-12 max-w-6xl px-4">
-          <DatabaseExplorer />
-        </section>
-
         <section className="mx-auto mt-12 max-w-6xl px-4">
-          <NovelAlloyPredictor />
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {([
+              ["database", "Database"],
+              ["ashby", "Ashby Plot"],
+              ["predictor", "Predictor"]
+            ] as Array<[ExploreTab, string]>).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setExploreTab(value)}
+                className={`rounded-full px-4 py-2 text-[12px] transition ${
+                  exploreTab === value
+                    ? "bg-brand font-semibold text-brand-subtle"
+                    : "border border-surface-800 bg-surface-900 text-surface-400 hover:text-zinc-100"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {exploreTab === "database" ? <DatabaseExplorer /> : null}
+          {exploreTab === "ashby" ? <AshbyPlot /> : null}
+          {exploreTab === "predictor" ? <NovelAlloyPredictor /> : null}
         </section>
 
         <footer className="mt-16 border-t border-surface-900 px-4 py-6">
@@ -284,7 +327,7 @@ export default function HomePage() {
               Smart Alloy Selector · MET-QUEST&apos;26
             </div>
             <div className="text-[10px] text-surface-700">
-              {materialCount.toLocaleString()} materials from {totalSources} sources
+              {materialStats.materialCount.toLocaleString()} materials from {materialStats.totalSources} source groups
             </div>
             <div className="flex items-center gap-3 text-[10px] text-surface-700">
               <span>Built with Next.js + Gemini</span>

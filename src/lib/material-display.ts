@@ -1,9 +1,11 @@
+import { fmt } from "@/lib/display";
 import type { Material } from "@/types";
 
 function firstSource(material: Material) {
   if (Array.isArray(material.source)) {
     return material.source[0] ?? "";
   }
+
   return material.source ?? "";
 }
 
@@ -21,6 +23,10 @@ export function formatNullable(
 }
 
 export function sourceBadge(material: Material) {
+  if (material.source_kind === "mp" || material.source_kind === "materials-project") {
+    return "MP";
+  }
+
   const source = firstSource(material);
   if (source === "MP") return "MP";
   if (source === "AZoM") return "AZoM";
@@ -34,6 +40,10 @@ export function sourceBadge(material: Material) {
 }
 
 export function sourceGroup(material: Material) {
+  if (material.source_kind === "mp" || material.source_kind === "materials-project") {
+    return "Materials Project";
+  }
+
   const source = firstSource(material);
   if (source === "MP") return "Materials Project";
   if (["AZoM", "Wikipedia", "MatWeb", "EngineeringToolbox"].includes(source)) {
@@ -47,6 +57,10 @@ export function sourceGroup(material: Material) {
 
 export function dataQualityLabel(material: Material) {
   switch (material.data_quality) {
+    case "validated":
+      return "Validated";
+    case "curated":
+      return "Curated";
     case "hardcoded-cited":
       return "Hardcoded Cited";
     case "scraped":
@@ -62,4 +76,12 @@ export function dataQualityLabel(material: Material) {
 
 export function sourceCount(materials: Material[]) {
   return new Set(materials.map((material) => sourceGroup(material))).size;
+}
+
+export function formatString(value: string | null | undefined) {
+  return fmt.str(value);
+}
+
+export function formatBoolean(value: boolean | null | undefined) {
+  return fmt.bool(value);
 }

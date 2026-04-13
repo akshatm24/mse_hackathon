@@ -46,8 +46,8 @@
 \textbf{Team:} Akshat Mittal \quad Harshit Dashore \quad Aaditya Mukherjee
 }\\[6pt]
 \begin{tabular}{ll|ll}
-Database & 7,116 materials & Frontend & Next.js 14 \\
-Baseline preserved & 655 entries & Deploy & Netlify \\
+Database & 7,118 materials & Frontend & Next.js 14 \\
+Engineering curated & 1,382 entries & Deploy & Netlify \\
 \end{tabular}
 \end{center}
 
@@ -55,7 +55,7 @@ Baseline preserved & 655 entries & Deploy & Netlify \\
 
 \begin{highlight}
 \textbf{Abstract.}
-Smart Alloy Selector is a natural-language materials recommendation system that combines structured query extraction, deterministic ranking, shortlist-grounded explanation generation, and a novel-composition predictor. The final expansion in this repository grew the runtime database to 7,116 materials by merging the existing baseline with a paginated Materials Project fetch, web-scraped engineering property tables, and hardcoded cited entries from manufacturer and handbook sources. The ranking layer was updated for null-safe scoring, negation handling, solder and heat-sink intent, cryogenic and biomedical filtering, and rule-of-mixtures composition prediction. The resulting build passes TypeScript and production-build checks and is deployed on Netlify.
+Smart Alloy Selector is a natural-language materials recommendation system that combines structured query extraction, deterministic ranking, shortlist-grounded explanation generation, and a split-database novel-composition predictor. The final expansion in this repository now serves 7,118 unique materials through two runtime pools: 1,382 curated engineering grades for the main selector and 5,736 Materials Project compounds for the novel-alloy workflow. The ranking layer was updated for duplicate-ID cleanup, engineering-only filtering, property-specific match reasons, deterministic tie-breaking, turbine-blade intent handling, null-safe UI rendering, and a visible predictor workflow that maps computed compounds to engineering analogues. The resulting build passes TypeScript, Jest, API smoke, and production-build checks and is deployed on Netlify.
 \end{highlight}
 
 \section{Problem Statement}
@@ -130,23 +130,23 @@ The final assembly order is:
   \item Materials Project entries.
 \end{enumerate}
 
-Only null fields are enriched from lower-priority sources. Existing curated values are never overwritten by weaker sources.
+After assembly, the runtime dataset is deduplicated by material ID and split into \texttt{src/data/materials.json} for engineering grades and \texttt{src/data/mp\_materials.json} for Materials Project compounds. Only null fields are enriched from lower-priority sources. Existing curated values are never overwritten by weaker sources.
 
 \section{Final Database State}
 
-The assembled database contains 7,116 unique materials:
+The assembled database contains 7,118 unique materials:
 
 \begin{center}
 \begin{tabular}{lr}
 \toprule
 \textbf{Group} & \textbf{Count} \\
 \midrule
-Preserved baseline entries & 655 \\
-New Materials Project entries & 5,690 \\
-New scraped entries & 758 \\
-New hardcoded cited entries & 13 \\
+Curated engineering materials & 1,382 \\
+Materials Project compounds & 5,736 \\
 \midrule
-\textbf{Total} & \textbf{7,116} \\
+\textbf{Combined unique IDs} & \textbf{7,118} \\
+\midrule
+\textbf{Duplicate IDs after split} & \textbf{0} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -158,11 +158,11 @@ Category split:
 \toprule
 \textbf{Category} & \textbf{Count} \\
 \midrule
-Metal & 4,716 \\
-Polymer & 214 \\
-Ceramic & 2,114 \\
-Composite & 43 \\
-Solder & 29 \\
+Metal & 4,731 \\
+Polymer & 204 \\
+Ceramic & 2,115 \\
+Composite & 44 \\
+Solder & 24 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -174,7 +174,8 @@ Data quality split:
 \toprule
 \textbf{Data quality} & \textbf{Count} \\
 \midrule
-Experimental / curated & 655 \\
+Experimental & 622 \\
+Validated & 35 \\
 Hardcoded cited & 13 \\
 Scraped & 758 \\
 Estimated & 3,348 \\
@@ -214,9 +215,16 @@ The ranker now explicitly handles:
 
 One important correction was splitting \emph{service temperature} from \emph{thermal conductivity}. Generic heat-sink prompts now rank by heat-flow performance rather than by refractory temperature capability. Reflow solder prompts likewise use melting-window suitability instead of service-temperature ranking.
 
+Two additional reliability fixes were critical in the final pass:
+
+\begin{itemize}[leftmargin=*]
+  \item the response is deduplicated immediately before return, so repeated IDs never appear in the UI or API payload,
+  \item turbine / hot-section queries now explicitly prefer nickel superalloys and related blade-capable materials over brittle refractory ceramics.
+\end{itemize}
+
 \subsection{Novel Composition Prediction}
 
-The predictor now parses typed compositions such as \texttt{Fe-18Cr-8Ni} and estimates screening properties using rule-of-mixtures style approximations for density, conductivity, resistivity, modulus, and cost. The response is explicitly labeled as a composition-based estimate rather than a certification-grade prediction.
+The predictor now uses the dedicated Materials Project compound pool instead of the main recommendation set. A formula such as \texttt{NiCo20Cr20MoTi} is parsed into element fractions, matched against the closest MP compound by cosine similarity, and then mapped to the nearest curated engineering analogue for practical recommendation. The response is explicitly labeled as screening guidance rather than a certification-grade prediction.
 
 \section{UI and Runtime Changes}
 
@@ -224,10 +232,13 @@ The interface was updated for the larger dataset:
 
 \begin{itemize}[leftmargin=*]
   \item the hero and stats bar now show the live material count,
-  \item the database browser reads from a JSON-backed runtime dataset,
+  \item the database browser defaults to engineering grades and exposes an explicit Materials Project toggle,
+  \item the runtime data is served from split JSON pools rather than one monolithic client-bundled import,
   \item null values render as em-dash placeholders instead of fake zeros,
   \item source and data-quality fields are surfaced in the UI layer,
-  \item recommendation cards and comparison components were patched for nullable fields.
+  \item recommendation cards now include per-axis score breakdowns and CSV export,
+  \item the main page includes an Ashby plot tab for density-versus-strength exploration,
+  \item detail sheets expose clickable source links when a datasheet URL exists.
 \end{itemize}
 
 \section{Validation}
@@ -251,7 +262,9 @@ The implementation also passed:
 
 \begin{itemize}[leftmargin=*]
   \item \texttt{npx tsc --noEmit}
+  \item \texttt{npx jest database.test --runInBand --forceExit}
   \item \texttt{npm run build}
+  \item live API smoke verification for deduplicated turbine-blade recommendations
 \end{itemize}
 
 \section{Security and Operational Notes}
@@ -267,6 +280,6 @@ Security requirements were enforced through the workflow:
 
 \section{Conclusion}
 
-The final Smart Alloy Selector build is no longer a small curated demo. It is a multi-source engineering screening system with a 7,116-row runtime database, deterministic ranking, shortlist-grounded explanations, and a dedicated data pipeline for fetch, scrape, normalize, and assembly stages. The resulting app is substantially broader in coverage while also being safer: it handles missing data, avoids common query-parsing traps, and remains auditable from raw source ingestion to final recommendation output.
+The final Smart Alloy Selector build is no longer a small curated demo. It is a multi-source engineering screening system with a 7,118-row runtime database, deterministic ranking, shortlist-grounded explanations, and a split data architecture that keeps curated engineering grades separate from Materials Project compounds. The resulting app is substantially broader in coverage while also being safer: it handles missing data, removes duplicate IDs, avoids common query-parsing traps, exposes richer UI diagnostics, and remains auditable from raw source ingestion to final recommendation output.
 
 \end{document}

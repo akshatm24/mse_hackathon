@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { materialsDB } from "@/lib/materials-db";
+import { ALL_MATERIALS } from "@/data";
 import { searchDatabase } from "@/lib/rag";
 
 export async function POST(req: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "query required" }, { status: 400 });
     }
 
-    const results = await searchDatabase(query, materialsDB, 15);
+    const results = await searchDatabase(query, ALL_MATERIALS, 15);
     return NextResponse.json({ results });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error";

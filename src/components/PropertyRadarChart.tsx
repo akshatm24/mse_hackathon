@@ -10,7 +10,6 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-import materialsDB from "@/lib/materials-db";
 import { formatNullable } from "@/lib/material-display";
 import { RankedMaterial } from "@/types";
 
@@ -61,11 +60,10 @@ export default function PropertyRadarChart({
     return null;
   }
 
-  const numeric = (values: Array<number | null>) => values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  const maxStrength = Math.max(...numeric(materialsDB.map((item) => item.tensile_strength_mpa)), 1);
-  const maxThermal = Math.max(...numeric(materialsDB.map((item) => item.max_service_temp_c)), 1);
-  const maxDensity = Math.max(...numeric(materialsDB.map((item) => item.density_g_cm3)), 1);
-  const maxCost = Math.max(...numeric(materialsDB.map((item) => item.cost_usd_kg)), 1);
+  const maxStrength = Math.max(...topThree.map((item) => item.tensile_strength_mpa ?? 0), 1500);
+  const maxThermal = Math.max(...topThree.map((item) => item.max_service_temp_c ?? 0), 1200);
+  const maxDensity = Math.max(...topThree.map((item) => item.density_g_cm3 ?? 0), 10);
+  const maxCost = Math.max(...topThree.map((item) => item.cost_usd_kg ?? 0), 300);
 
   const chartData = [
     {

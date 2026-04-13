@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { ENGINEERING_MATERIALS } from "@/data";
+import { deduplicateById } from "@/lib/dedup";
 import { extractConstraints, generateExplanation, validateWeights } from "@/lib/gemini";
-import { materialsDB } from "@/lib/materials-db";
 import { selectFromCandidates } from "@/lib/rag";
 import { scoreMaterials } from "@/lib/scoring";
 import type { UserConstraints } from "@/types";
@@ -87,23 +88,24 @@ async function buildResponse(
   constraints = validateWeights(constraints);
   constraints = mergeConstraints(constraints, manualConstraints);
 
-  const rankedMaterials = scoreMaterials(constraints, materialsDB);
+  const rankedMaterials = scoreMaterials(constraints, ENGINEERING_MATERIALS);
+  const deduped = deduplicateById(rankedMaterials);
   const ragContext = selectFromCandidates(
     query,
-    rankedMaterials.slice(0, 10),
+    deduped.slice(0, 10),
     constraints._negatedAxes ?? [],
     5
   );
-  const llmExplanation = await generateExplanation(query, ragContext, history);
+  const llmExplanation = await generateExplanation(query, deduped, history);
 
   return {
-    rankedMaterials,
+    rankedMaterials: deduped,
     llmExplanation,
     inferredConstraints: constraints,
     clarifications: "Constraints auto-detected from query.",
-    matchCount: rankedMaterials.length,
+    matchCount: deduped.length,
     ragMaterials: ragContext.map((material) => material.name),
-    warnings: Array.from(new Set(rankedMaterials.flatMap((material) => material.warnings ?? []))).slice(
+    warnings: Array.from(new Set(deduped.flatMap((material) => material.warnings ?? []))).slice(
       0,
       6
     )

@@ -13,24 +13,25 @@ Team:
 
 ## Current Database Snapshot
 
-The current assembled runtime database contains `7,116` searchable materials.
+The current split runtime database contains `7,118` searchable materials.
 
-- Preserved baseline entries from this checkout: `655`
-- Added Materials Project entries: `5,690`
-- Added scraped entries: `758`
-- Added hardcoded cited entries: `13`
+- Curated engineering materials: `1,382`
+- Materials Project compounds: `5,736`
+- Total unique IDs across both files: `7,118`
+- Duplicate IDs across `src/data/materials.json` + `src/data/mp_materials.json`: `0`
 
 Category distribution:
 
-- `4,716` metals
-- `214` polymers
-- `2,114` ceramics
-- `43` composites
-- `29` solders
+- `4,731` metals
+- `204` polymers
+- `2,115` ceramics
+- `44` composites
+- `24` solders
 
 Data quality distribution:
 
-- `655` experimental / curated
+- `622` experimental
+- `35` validated
 - `13` hardcoded cited
 - `758` scraped
 - `3,348` estimated
@@ -48,11 +49,14 @@ Each recommendation request follows one deterministic pipeline:
 
 The ranking layer now includes:
 
+- engineering-only recommendation filtering, with MP compounds reserved for the novel-alloy workflow
+- duplicate-ID removal with source/quality-aware deduplication
+- property-specific match reasons and deterministic score tie-breakers
 - null-safe scoring for missing properties
 - negation handling such as `cost not important`, `no ceramics`, and `not magnetic`
 - cryogenic and biomedical shortlists
 - category hard constraints for soldering, FDM, insulation, and heat-sink queries
-- rule-of-mixtures prediction for novel typed compositions such as `Fe-18Cr-8Ni`
+- turbine/hot-section intent handling so superalloys surface for blade queries
 
 ## Data Sources
 
@@ -109,6 +113,7 @@ Convenience commands:
 
 - `npm run update-db-mp`: fetch + process Materials Project data
 - `npm run build-db`: fetch MP data, run scrapers, and assemble the final database
+- `npm run fetch-mp-materials`: top up `src/data/mp_materials.json` to 5000+ MP compounds if needed
 
 Key generated artifacts:
 
@@ -116,7 +121,8 @@ Key generated artifacts:
 - `scripts/mp-processed.json`
 - `scripts/scraped-materials-merged.json`
 - `scripts/hardcoded-materials.json`
-- `src/lib/materials-db.json`
+- `src/data/materials.json`
+- `src/data/mp_materials.json`
 
 ## Evaluation And Verification
 
@@ -124,6 +130,7 @@ Key generated artifacts:
 npm run eval:recommend
 npm run eval:predict
 npm run eval:full
+npx jest database.test --runInBand --forceExit
 npx tsc --noEmit
 npm run build
 ```
@@ -132,12 +139,19 @@ Artifacts are written to `reports/`.
 
 ## Key Files
 
-- `src/lib/materials-db.json`: assembled runtime database
+- `src/data/materials.json`: curated engineering materials
+- `src/data/mp_materials.json`: Materials Project compound pool for predictor use
+- `src/data/index.ts`: deduplicated data barrel and source-kind split
 - `src/lib/scoring.ts`: deterministic ranking, intent parsing, and shortlist bonuses
+- `src/lib/dedup.ts`: source-aware duplicate-ID cleanup
+- `src/lib/filterEngineering.ts`: engineering vs MP pool separation
 - `src/lib/gemini.ts`: structured constraint extraction and local fallback logic
 - `src/app/api/recommend/route.ts`: recommendation endpoint
-- `src/app/api/predict/route.ts`: novel-alloy predictor endpoint
+- `src/app/api/predictor/route.ts`: MP-compound to engineering-analogue predictor endpoint
+- `src/components/AshbyPlot.tsx`: density vs strength Ashby plot
+- `src/components/ScoreBreakdown.tsx`: per-result weighted score visualization
 - `scripts/fetch-mp.mjs`: paginated Materials Project fetch
+- `scripts/fetch_mp_materials.ts`: MP split-database top-up fetcher
 - `scripts/process-mp.mjs`: MP-to-runtime normalization and enrichment
 - `scripts/scrape/run-all.mjs`: scraper orchestrator
 - `scripts/assemble-db.mjs`: final merge and deduplication stage

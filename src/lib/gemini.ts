@@ -590,25 +590,38 @@ export async function generateExplanation(
       return localFallback;
     }
 
-    const model = getClient().getGenerativeModel({ model: "gemini-2.0-flash" });
-    const context = ranked
-      .slice(0, 5)
-      .map(
-        (material, index) =>
-          `${index + 1}. ${material.name} | score ${material.score}/100 | max temp ${displayNumber(material.max_service_temp_c, "C")} | ` +
-          `tensile ${displayNumber(material.tensile_strength_mpa, " MPa")} | density ${displayNumber(material.density_g_cm3, " g/cm3", 2)} | ` +
-          `cost $${displayNumber(material.cost_usd_kg, "", 2)}/kg | corrosion ${material.corrosion_resistance ?? "unknown"} | FDM ${material.printability_fdm}`
-      )
-      .join("\n");
+    const top = ranked[0];
+    if (!top) {
+      return localFallback;
+    }
 
-    const prompt =
-      `You are a materials scientist advising an engineer.\n` +
-      `User query: ${query}\n` +
-      `Candidate shortlist:\n${context}\n\n` +
-      `Write exactly 3 short paragraphs with no bullet points.\n` +
-      `Paragraph 1: explain why the top-ranked material wins.\n` +
-      `Paragraph 2: compare the top three materials with concrete tradeoffs.\n` +
-      `Paragraph 3: give engineering caveats and procurement checks.\n`;
+    const model = getClient().getGenerativeModel({ model: "gemini-2.0-flash" });
+    const runnersUp = ranked
+      .slice(1, 4)
+      .map((material) => `${material.name} (${material.score}/100)`)
+      .join(", ");
+
+    const prompt = `
+You are an expert materials engineer advising an engineering student.
+
+The query was: "${query}"
+The top recommended material is: ${top.name} (overall score ${top.score}/100).
+
+Key properties of ${top.name}:
+- Max service temperature: ${displayNumber(top.max_service_temp_c, "°C")}
+- Tensile strength: ${displayNumber(top.tensile_strength_mpa, " MPa")}
+- Density: ${displayNumber(top.density_g_cm3, " g/cm³", 2)}
+- Cost: $${displayNumber(top.cost_usd_kg, "", 2)}/kg
+- Corrosion resistance: ${top.corrosion_resistance ?? "unknown"}
+- FDM printable: ${top.fdm_printable ? "Yes" : "No"}
+- Source: ${top.source}
+
+Runners-up: ${runnersUp || "None"}
+
+Write a 3-sentence explanation of why ${top.name} is the best fit for the query.
+Name at least 2 specific property values. Mention one trade-off or caveat.
+Do not use bullet points. Do not repeat the score number.
+`.trim();
 
     const chat = model.startChat({
       history: (history ?? []).map((entry) => ({
