@@ -5,6 +5,7 @@ rm -rf _submission SmartAlloySelectorSubmission.zip
 mkdir -p _submission/code _submission/datasets
 
 rsync -av \
+  --exclude='.DS_Store' \
   --exclude='node_modules' \
   --exclude='.next' \
   --exclude='.netlify' \
@@ -16,6 +17,7 @@ rsync -av \
   --exclude='SmartAlloySelectorSubmission.zip' \
   --exclude='SmartAlloySelector_AkshatMittal_HarshitDashore_AadityaMukherjee.zip' \
   --exclude='scripts/mp-materials-raw.json' \
+  --exclude='tsconfig.tsbuildinfo' \
   . _submission/code/
 
 cat > /tmp/export.mjs <<'JSEOF'
@@ -70,6 +72,7 @@ writeFileSync(
 console.log('Exported', db.length, 'materials to CSV');
 JSEOF
 
+export PATH="/Users/akshatmittal/Downloads/problem_hackathon/.local-node/node-v20.19.2-darwin-arm64/bin:$PATH"
 node /tmp/export.mjs 2>/dev/null || echo "CSV export skipped (run after npm run build)"
 
 cp smart_alloy_report.tex _submission/ 2>/dev/null || echo "Add smart_alloy_report.tex manually"
