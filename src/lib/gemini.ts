@@ -69,6 +69,8 @@ const WEIGHT_SIGNALS = [
 const STRENGTH_SIGNALS = [
   "strong",
   "high strength",
+  "highest strength",
+  "strongest",
   "load",
   "structural",
   "tensile",
@@ -82,7 +84,6 @@ const STRENGTH_SIGNALS = [
   "robust",
   "mpa",
   "gpa",
-  "bracket",
   "support"
 ];
 
@@ -204,11 +205,11 @@ function displayNumber(value: number | null | undefined, suffix = "", digits = 0
 function detectNegatedAxes(query: string) {
   return {
     strength:
-      /\blow\s+strength\b|\bweak(?:er)?\b|\bnot\s+strong\b|\bsoft\s+material\b|\bstrength\s+not\b|\bno\s+(?:load|stress|structural)\b|\blow\s+tensile\b|\blow\s+stiffness\b|\bflexible\b(?!.*rigid)|\bductile\b|\beasily\s+cut\b|\beasy\s+to\s+cut\b|\blow\s+hardness\b/.test(
+      /\blow\s+strength\b|\bweak(?:er)?\b|\bsoft(?:\s+mat(?:erial)?)?\b|\bnot\s+strong\b|\bstrength\s+not\b|\bno\s+(?:load|stress|structural)\b|\blow\s+tensile\b|\blow\s+stiffness\b|\bflexible\b(?!.*rigid)|\beasily\s+cut\b|\beasy\s+to\s+cut\b|\blow\s+hardness\b/.test(
         query
       ),
     thermal:
-      /\blow\s+temp\b|\bcold\s+(?:env|environment|app|application|use)\b|\bcryogen|\bnot\s+hot\b|\broom\s+temp\s+only\b|\bno\s+heat\b|\bheat\s+not\s+(?:important|critical|needed)\b|\bambient\s+temp\b|\bminus\s+\d+\b|-\d+\s*°?\s*c\b|\bliquid\s+(?:nitrogen|helium)\b/.test(
+      /\blow\s+temp\b|\bcold\b|\bcryogen|\bnot\s+hot\b|\broom\s+temp\s+only\b|\bno\s+heat\b|\bheat\s+not\s+(?:important|critical|needed)\b|\bambient\s+temp\b|\bminus\s+\d+\b|-\d+\s*°?\s*c\b|\bliquid\s+(?:nitrogen|helium)\b/.test(
         query
       ),
     weight:
@@ -366,11 +367,11 @@ export function heuristicExtract(query: string): UserConstraints {
     Object.assign(
       weights,
       normaliseWeights({
-        thermal: 0.12,
-        strength: 0.62,
-        weight: 0.08,
+        thermal: 0.08,
+        strength: 0.74,
+        weight: 0.04,
         cost: 0.02,
-        corrosion: 0.16
+        corrosion: 0.12
       })
     );
   }
@@ -414,7 +415,8 @@ export function heuristicExtract(query: string): UserConstraints {
   return {
     maxTemperature_c: chooseTemperature(q, isCryogenic),
     minTensileStrength_mpa:
-      /load bearing|structural|strongest possible|high strength/.test(q) && !neg.strength
+      /load bearing|structural|strongest possible|highest strength|high strength/.test(q) &&
+      !neg.strength
         ? 250
         : /probe tip|probe|electrode|contact/.test(q)
           ? 200

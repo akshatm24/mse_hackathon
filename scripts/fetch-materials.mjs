@@ -391,6 +391,11 @@ function uniqueElements(formula) {
   return [...new Set(parseFormula(formula).map((entry) => entry.element))];
 }
 
+function isAlloyLikeFormula(formula) {
+  const elements = uniqueElements(formula);
+  return elements.length >= 2 && elements.every((element) => METAL_ELEMENTS.has(element));
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -774,6 +779,10 @@ function buildTags(formula, category, subcategory, isStable, symmetry) {
 function convertDocToMaterial(doc) {
   const formula = String(doc.formula_pretty || "").replace(/\s+/g, "");
   if (!formula) {
+    return null;
+  }
+
+  if (!isAlloyLikeFormula(formula)) {
     return null;
   }
 

@@ -4,6 +4,8 @@ set -euo pipefail
 
 echo "Creating submission package..."
 
+ZIP_NAME="SmartAlloySelector_AkshatMittal_HarshitDashore_AadityaMukherjee.zip"
+
 mkdir -p submission/smart-alloy-selector
 
 rsync -av \
@@ -17,15 +19,22 @@ rsync -av \
   --exclude='scripts/mp-materials-raw.json' \
   --exclude='submission' \
   --exclude='SmartAlloySelectorSubmission.zip' \
+  --exclude="$ZIP_NAME" \
   . submission/smart-alloy-selector/
 
 mkdir -p submission/datasets
 cp src/lib/materials-db.ts submission/datasets/materials_database.ts
 cp src/lib/mp-materials-generated.ts submission/datasets/mp_materials_generated.ts 2>/dev/null || true
 
-export PATH="/tmp/node20/bin:$PATH"
+export PATH="/Users/akshatmittal/Downloads/problem_hackathon/.local-node/node-v20.19.2-darwin-arm64/bin:$PATH"
 node --import tsx scripts/export-csv.mjs
 cp submission/materials_export.csv submission/datasets/ 2>/dev/null || true
+
+mkdir -p submission/reports
+cp reports/recommendation-eval.json submission/reports/ 2>/dev/null || true
+cp reports/recommendation-eval.md submission/reports/ 2>/dev/null || true
+cp reports/predictor-eval.json submission/reports/ 2>/dev/null || true
+cp reports/predictor-eval.md submission/reports/ 2>/dev/null || true
 
 cp smart_alloy_report.tex submission/
 cp smart_alloy_report.pdf submission/ 2>/dev/null || \
@@ -35,7 +44,10 @@ cat > submission/README.txt << 'EOF'
 SMART ALLOY SELECTOR — MET-QUEST'26 SUBMISSION
 ===============================================
 
-TEAM: Smart Alloy Selector Team
+TEAM:
+  Akshat Mittal
+  Harshit Dashore
+  Aaditya Mukherjee
 EVENT: MET-QUEST'26
 
 LIVE URL: https://beautiful-tiramisu-211a94.netlify.app
@@ -44,6 +56,7 @@ GITHUB:   https://github.com/akshatm24/mse_hackathon
 CONTENTS:
   smart-alloy-selector/   - Complete source code
   datasets/               - Materials database (TypeScript + CSV)
+  reports/                - Evaluation outputs for recommendation and predictor tests
   smart_alloy_report.tex  - LaTeX technical report source
   smart_alloy_report.pdf  - Compiled technical report (if present)
 
@@ -65,12 +78,12 @@ even when a remote model is not used.
 EOF
 
 cd submission
-zip -r ../SmartAlloySelectorSubmission.zip . --exclude="*.DS_Store"
+zip -r "../$ZIP_NAME" . --exclude="*.DS_Store"
 cd ..
 
 echo ""
-echo "Submission created: SmartAlloySelectorSubmission.zip"
-echo "Size: $(du -sh SmartAlloySelectorSubmission.zip | cut -f1)"
+echo "Submission created: $ZIP_NAME"
+echo "Size: $(du -sh "$ZIP_NAME" | cut -f1)"
 echo ""
 echo "Contents:"
-unzip -l SmartAlloySelectorSubmission.zip | head -40
+unzip -l "$ZIP_NAME" | head -40

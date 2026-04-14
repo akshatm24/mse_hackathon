@@ -33,24 +33,18 @@ export interface Material {
   scrape_url?: string | null;
   data_quality?:
     | "validated"
-    | "curated"
     | "experimental"
     | "scraped"
     | "hardcoded-cited"
     | "estimated"
     | "mp-calculated";
-  source_kind?:
-    | "curated"
-    | "hardcoded"
-    | "validated"
-    | "mp"
-    | "materials-project";
-  formula_pretty?: string;
-  material_id?: string;
+  source_kind?: "curated" | "hardcoded" | "validated" | "mp" | "materials-project";
+  formula_pretty?: string | null;
+  material_id?: string | null;
   energy_above_hull?: number | null;
   band_gap_eV?: number | null;
   is_stable?: boolean;
-  standards?: string[];
+  standards?: string[] | null;
   data_enriched_from_mp?: boolean;
   biocompatible?: boolean;
   magnetic?: boolean;
@@ -87,7 +81,7 @@ export interface RankedMaterial extends Material {
   score: number;
   matchReason: string;
   warnings?: string[];
-  normalizedScores: {
+  normalizedScores?: {
     thermal: number;
     strength: number;
     weight: number;
@@ -112,31 +106,8 @@ export interface RecommendResponse {
 }
 
 export interface PredictorResponse {
-  winner: Material;
-  alternatives: Material[];
-  explanation: string;
-  method: "exact-match" | "hybrid-screening" | "analog-fallback";
-  confidence: number;
-  warnings: string[];
-  predictedProperties?: {
-    density_g_cm3: number;
-    tensile_strength_mpa: number;
-    elastic_modulus_gpa: number;
-    thermal_conductivity_w_mk?: number;
-    thermal_expansion_ppm_k: number;
-    electrical_resistivity_ohm_m: number;
-    cost_usd_kg: number;
-  };
-  nearestAnalogs?: Material[];
-  predictedCategory?: Material["category"];
-}
-
-export interface PredictorMatchResponse {
-  parsedFormula: string;
-  elementFractions: Record<string, number>;
-  compound: Material;
-  analogue: Material;
-  alternatives: Material[];
-  explanation: string;
-  confidence: number;
+  composition: string;
+  prediction: string;
+  analogues: Material[];
+  geminiUsed: boolean;
 }

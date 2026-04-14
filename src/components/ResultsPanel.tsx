@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, LayoutGrid, Rows3 } from "lucide-react";
+import { LayoutGrid, Rows3 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import ChatInterface from "@/components/ChatInterface";
@@ -8,7 +8,7 @@ import ComparisonTable from "@/components/ComparisonTable";
 import MaterialCard from "@/components/MaterialCard";
 import PropertyRadarChart from "@/components/PropertyRadarChart";
 import { formatNullable, sourceBadge } from "@/lib/material-display";
-import type { RankedMaterial, RecommendResponse } from "@/types";
+import { RecommendResponse } from "@/types";
 
 interface ResultsPanelProps {
   data: RecommendResponse;
@@ -16,7 +16,7 @@ interface ResultsPanelProps {
   searchDurationMs?: number;
 }
 
-function exportCSV(materials: RankedMaterial[]) {
+function exportCSV(materials: RecommendResponse["rankedMaterials"]) {
   const headers = [
     "Rank",
     "Name",
@@ -30,7 +30,6 @@ function exportCSV(materials: RankedMaterial[]) {
     "FDM Printable",
     "Source"
   ];
-
   const rows = materials.map((material, index) => [
     index + 1,
     material.name,
@@ -42,12 +41,11 @@ function exportCSV(materials: RankedMaterial[]) {
     material.cost_usd_kg ?? "—",
     material.corrosion_resistance ?? "—",
     material.fdm_printable ? "Yes" : "No",
-    Array.isArray(material.source) ? material.source.join(" | ") : material.source ?? "—"
+    material.data_source ?? "—"
   ]);
-
-  const escapeCell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
-  const csv = [headers, ...rows].map((row) => row.map(escapeCell).join(",")).join("\n");
-
+  const csv = [headers, ...rows]
+    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -57,7 +55,11 @@ function exportCSV(materials: RankedMaterial[]) {
   URL.revokeObjectURL(url);
 }
 
-export default function ResultsPanel({ data, query, searchDurationMs }: ResultsPanelProps) {
+export default function ResultsPanel({
+  data,
+  query,
+  searchDurationMs
+}: ResultsPanelProps) {
   const [showAll, setShowAll] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [view, setView] = useState<"grid" | "table">("grid");
@@ -70,7 +72,6 @@ export default function ResultsPanel({ data, query, searchDurationMs }: ResultsP
   const visibleMaterials = showAll ? data.rankedMaterials : data.rankedMaterials.slice(0, 5);
   const selectedMaterials = data.rankedMaterials.filter((item) => selectedIds.includes(item.id));
   const countLabel = data.matchCount ?? data.rankedMaterials.length;
-  const weights = data.inferredConstraints.priorityWeights;
 
   function toggleMaterial(id: string) {
     setSelectedIds((current) => {
@@ -104,6 +105,12 @@ export default function ResultsPanel({ data, query, searchDurationMs }: ResultsP
         {data.ragMaterials && data.ragMaterials.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-surface-500">
             <span>Gemini analysed:</span>
+            <span
+              className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-surface-700 text-[10px] text-surface-500"
+              title="RAG (Retrieval Augmented Generation) retrieves the most semantically relevant materials from the scored candidates and passes them to Gemini, producing more focused and accurate explanations than sending all results at once."
+            >
+              i
+            </span>
             {data.ragMaterials.map((name) => (
               <span
                 key={name}
@@ -152,9 +159,8 @@ export default function ResultsPanel({ data, query, searchDurationMs }: ResultsP
           <button
             type="button"
             onClick={() => exportCSV(data.rankedMaterials)}
-            className="inline-flex items-center gap-2 rounded-md border border-surface-800 px-3 py-1.5 text-[12px] text-surface-300 transition hover:border-surface-700 hover:text-zinc-100"
+            className="rounded-lg border border-surface-800 bg-surface-900 px-3 py-1.5 text-[11px] text-zinc-100 transition hover:border-surface-700 hover:bg-surface-800"
           >
-            <Download className="h-3.5 w-3.5" />
             Export CSV
           </button>
           <button
@@ -197,7 +203,7 @@ export default function ResultsPanel({ data, query, searchDurationMs }: ResultsP
               compareDisabled={selectedIds.length >= 4}
               onToggle={() => toggleMaterial(material.id)}
               staggerIndex={index}
-              weights={weights}
+              weights={data.inferredConstraints.priorityWeights}
             />
           ))}
         </div>
@@ -223,15 +229,9 @@ export default function ResultsPanel({ data, query, searchDurationMs }: ResultsP
                   <td className="py-3 text-surface-400">{material.category}</td>
                   <td className="py-3 text-surface-400">{sourceBadge(material)}</td>
                   <td className="py-3 font-mono text-brand">{material.score}</td>
-                  <td className="py-3 font-mono text-surface-400">
-                    {formatNullable(material.max_service_temp_c, { suffix: "°C" })}
-                  </td>
-                  <td className="py-3 font-mono text-surface-400">
-                    {formatNullable(material.density_g_cm3, { digits: 2 })}
-                  </td>
-                  <td className="py-3 font-mono text-surface-400">
-                    {formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$" })}
-                  </td>
+                  <td className="py-3 font-mono text-surface-400">{formatNullable(material.max_service_temp_c, { suffix: "°C" })}</td>
+                  <td className="py-3 font-mono text-surface-400">{formatNullable(material.density_g_cm3, { digits: 2 })}</td>
+                  <td className="py-3 font-mono text-surface-400">{formatNullable(material.cost_usd_kg, { digits: 2, prefix: "$" })}</td>
                   <td className="py-3">
                     <input
                       type="checkbox"

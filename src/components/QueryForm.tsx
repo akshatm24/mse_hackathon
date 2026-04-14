@@ -1,160 +1,68 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
-type WeightKey = "strength" | "thermal" | "weight" | "cost" | "corrosion";
-type WeightState = Record<WeightKey, number>;
+import type { UserConstraints } from "@/types";
 
 interface QueryFormProps {
-  onSubmit: (query: string, manualConstraints?: object) => void;
+  onSubmit: (query: string) => void;
   loading: boolean;
-  weights: WeightState;
-  weightsAutoDetected: boolean;
-  hasManualWeightOverride: boolean;
-  negatedAxes: string[];
-  onWeightsChange: (weights: WeightState) => void;
-  onManualWeightOverride: () => void;
+  inferredConstraints?: UserConstraints | null;
+  autoDetected?: boolean;
+  negatedAxes?: string[];
 }
 
-const propertyMeta: Array<{
-  key: WeightKey;
-  label: string;
-  color: string;
-}> = [
-  { key: "strength", label: "Strength", color: "#34D399" },
-  { key: "thermal", label: "Thermal", color: "#F59E0B" },
-  { key: "weight", label: "Weight", color: "#38BDF8" },
-  { key: "cost", label: "Cost", color: "#A78BFA" },
-  { key: "corrosion", label: "Corrosion", color: "#FB7185" }
-];
+const DEFAULT_WEIGHTS = {
+  strength: 30,
+  thermal: 15,
+  weight: 15,
+  cost: 30,
+  corrosion: 10
+};
 
-const placeholder = `Describe your engineering problem... e.g. 'We're building a
-4-point probe for sintered copper-cobalt pellets. The tip
-needs to be hard, conductive, and survive 200°C cycling.'`;
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function toPercent(value: number) {
-  return Math.round(value * 100);
-}
+const WEIGHT_COLORS = {
+  strength: "#F59E0B",
+  thermal: "#38BDF8",
+  weight: "#34D399",
+  cost: "#A78BFA",
+  corrosion: "#FB7185"
+} as const;
 
 export default function QueryForm({
   onSubmit,
   loading,
-  weights,
-  weightsAutoDetected,
-  hasManualWeightOverride,
-  negatedAxes,
-  onWeightsChange,
-  onManualWeightOverride
+  inferredConstraints,
+  autoDetected = false,
+  negatedAxes = []
 }: QueryFormProps) {
   const [query, setQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [openWeight, setOpenWeight] = useState<WeightKey | null>(null);
-  const [maxTemp, setMaxTemp] = useState("");
-  const [minTensile, setMinTensile] = useState("");
-  const [maxDensity, setMaxDensity] = useState("");
-  const [maxCost, setMaxCost] = useState("");
-  const [needsFDM, setNeedsFDM] = useState(false);
 
-  const filterChips = useMemo(() => {
-    const chips: Array<{ key: string; label: string }> = [];
-    if (maxTemp) {
-      chips.push({ key: "maxTemp", label: `Max temp ${maxTemp}°C` });
-    }
-    if (minTensile) {
-      chips.push({ key: "minTensile", label: `Min tensile ${minTensile} MPa` });
-    }
-    if (maxDensity) {
-      chips.push({ key: "maxDensity", label: `Max density ${maxDensity} g/cm³` });
-    }
-    if (maxCost) {
-      chips.push({ key: "maxCost", label: `Max cost $${maxCost}/kg` });
-    }
-    if (needsFDM) {
-      chips.push({ key: "needsFDM", label: "FDM printable" });
-    }
-    return chips;
-  }, [maxCost, maxDensity, maxTemp, minTensile, needsFDM]);
+  const displayWeights = inferredConstraints?.priorityWeights
+    ? {
+        strength: Math.round(inferredConstraints.priorityWeights.strength * 100),
+        thermal: Math.round(inferredConstraints.priorityWeights.thermal * 100),
+        weight: Math.round(inferredConstraints.priorityWeights.weight * 100),
+        cost: Math.round(inferredConstraints.priorityWeights.cost * 100),
+        corrosion: Math.round(inferredConstraints.priorityWeights.corrosion * 100)
+      }
+    : DEFAULT_WEIGHTS;
 
-  function removeChip(key: string) {
-    if (key === "maxTemp") {
-      setMaxTemp("");
-    }
-    if (key === "minTensile") {
-      setMinTensile("");
-    }
-    if (key === "maxDensity") {
-      setMaxDensity("");
-    }
-    if (key === "maxCost") {
-      setMaxCost("");
-    }
-    if (key === "needsFDM") {
-      setNeedsFDM(false);
-    }
-  }
-
-  function normalise(nextWeights: WeightState) {
-    const total = Object.values(nextWeights).reduce((sum, value) => sum + value, 0);
-    return Object.fromEntries(
-      Object.entries(nextWeights).map(([key, value]) => [key, value / total])
-    ) as WeightState;
-  }
-
-  function updateWeight(targetKey: WeightKey, nextValue: number) {
-    const clamped = clamp(nextValue, 0.05, 0.8);
-    const otherKeys = propertyMeta
-      .map((item) => item.key)
-      .filter((key) => key !== targetKey);
-    const remaining = 1 - clamped;
-    const currentOtherTotal = otherKeys.reduce((sum, key) => sum + weights[key], 0);
-    const nextWeights = { ...weights, [targetKey]: clamped };
-
-    otherKeys.forEach((key) => {
-      nextWeights[key] =
-        currentOtherTotal === 0
-          ? remaining / otherKeys.length
-          : (weights[key] / currentOtherTotal) * remaining;
-    });
-
-    onManualWeightOverride();
-    onWeightsChange(normalise(nextWeights));
-  }
-
-  function parseNumber(value: string) {
-    if (!value.trim()) {
-      return undefined;
-    }
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-
-  function handleSubmit() {
-    const trimmed = query.trim();
-    const hasManual =
-      maxTemp || minTensile || maxDensity || maxCost || needsFDM || hasManualWeightOverride;
-
-    if ((!trimmed && !hasManual) || loading) {
+  const handleSubmit = useCallback(() => {
+    if (!query.trim() || loading) {
       return;
     }
-
-    onSubmit(trimmed, {
-      rawQuery: trimmed,
-      maxTemperature_c: parseNumber(maxTemp),
-      minTensileStrength_mpa: parseNumber(minTensile),
-      maxDensity_g_cm3: parseNumber(maxDensity),
-      maxCost_usd_kg: parseNumber(maxCost),
-      needsFDMPrintability: needsFDM || undefined,
-      priorityWeights: hasManualWeightOverride ? weights : undefined
-    });
-  }
+    onSubmit(query.trim());
+  }, [loading, onSubmit, query]);
 
   return (
-    <div className="mx-auto max-w-[780px] px-4">
-      <div className="overflow-hidden rounded-2xl border border-surface-800 bg-surface-900 transition-all duration-200 focus-within:border-amber-500/40 focus-within:shadow-[0_0_0_3px_rgba(245,158,11,0.08)]">
+    <div id="query" className="mx-auto max-w-3xl px-4 py-8">
+      <div
+        className={`overflow-hidden rounded-xl border bg-zinc-900 transition-all duration-200 ${
+          loading
+            ? "border-amber-500/30"
+            : "border-zinc-700 focus-within:border-amber-500/50"
+        }`}
+      >
         <textarea
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -164,208 +72,125 @@ export default function QueryForm({
               handleSubmit();
             }
           }}
-          placeholder={placeholder}
-          className="min-h-[88px] w-full resize-none bg-transparent px-[18px] py-4 text-[14px] leading-[1.7] text-surface-200 outline-none placeholder:text-surface-700"
+          placeholder={
+            "Describe your engineering challenge in plain English...\n\n" +
+            'e.g. "Our robotics team needs a 3D printed mounting bracket for a high-torque DC motor. Must survive 85°C heat, lightweight, easy to print on a desktop printer."'
+          }
+          rows={5}
+          disabled={loading}
+          className="w-full resize-none border-none bg-transparent p-4 text-sm leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-600 disabled:opacity-60"
         />
 
-        {filterChips.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 px-[18px] pb-[10px]">
-            {filterChips.map((chip) => (
-              <button
-                key={chip.key}
-                type="button"
-                onClick={() => removeChip(chip.key)}
-                className="chip-pop inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-brand"
+        {inferredConstraints ? (
+          <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+            {inferredConstraints.maxTemperature_c ? (
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
+                Max temp: {inferredConstraints.maxTemperature_c}°C
+              </span>
+            ) : null}
+            {inferredConstraints.needsFDMPrintability ? (
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">
+                FDM printable
+              </span>
+            ) : null}
+            {inferredConstraints.maxCost_usd_kg ? (
+              <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] text-purple-400">
+                Max ${inferredConstraints.maxCost_usd_kg}/kg
+              </span>
+            ) : null}
+            {inferredConstraints.electricallyConductive ? (
+              <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] text-sky-400">
+                Electrically conductive
+              </span>
+            ) : null}
+            {inferredConstraints.corrosionRequired ? (
+              <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-400">
+                Corrosion: {inferredConstraints.corrosionRequired}
+              </span>
+            ) : null}
+            {negatedAxes.map((axis) => (
+              <span
+                key={axis}
+                className="rounded-full border border-zinc-600 bg-zinc-700/50 px-2 py-0.5 text-[10px] text-zinc-400 line-through"
               >
-                {chip.label}
-                <span aria-hidden="true">×</span>
-              </button>
+                {axis} deprioritised
+              </span>
             ))}
           </div>
         ) : null}
 
-        <div className="border-t border-surface-800 px-[18px] py-3">
-          <button
-            type="button"
-            onClick={() => setShowFilters((current) => !current)}
-            className="flex w-full items-center justify-between text-left"
-          >
-            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-              Advanced Filters
+        <div className="border-t border-zinc-800" />
+
+        <div className="px-4 py-3">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-zinc-500">
+              Priority weights:
             </span>
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              className={`transition-transform ${showFilters ? "rotate-180" : ""}`}
-            >
-              <path
-                d="M6 9L12 15L18 9"
-                stroke="#71717A"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-
-          {showFilters ? (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {[
-                {
-                  id: "maxTemp",
-                  label: "Max Temp (°C)",
-                  value: maxTemp,
-                  setValue: setMaxTemp
-                },
-                {
-                  id: "minTensile",
-                  label: "Min Tensile (MPa)",
-                  value: minTensile,
-                  setValue: setMinTensile
-                },
-                {
-                  id: "maxDensity",
-                  label: "Max Density (g/cm³)",
-                  value: maxDensity,
-                  setValue: setMaxDensity
-                },
-                {
-                  id: "maxCost",
-                  label: "Max Cost ($/kg)",
-                  value: maxCost,
-                  setValue: setMaxCost
-                }
-              ].map((field) => (
-                <label key={field.id} className="space-y-1">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-                    {field.label}
-                  </span>
-                  <input
-                    value={field.value}
-                    onChange={(event) => field.setValue(event.target.value)}
-                    className="w-full rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-[12px] text-surface-200 outline-none transition focus:border-amber-500/40"
-                  />
-                </label>
-              ))}
-
-              <label className="mt-1 flex items-center justify-between rounded-lg border border-surface-700 bg-surface-800 px-3 py-2">
-                <span className="text-[11px] text-surface-400">Needs FDM Printability</span>
-                <input
-                  type="checkbox"
-                  checked={needsFDM}
-                  onChange={(event) => setNeedsFDM(event.target.checked)}
-                  className="h-4 w-4 accent-amber-500"
-                />
-              </label>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="border-t border-surface-800 px-[18px] py-3">
-          <div className="flex items-start gap-3">
-            <div className="flex min-w-[120px] items-center gap-2 pt-1">
-              <span className="text-[11px] text-surface-600">Weights:</span>
-              {weightsAutoDetected ? (
-                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-medium text-brand">
-                  Auto-detected from query
-                </span>
-              ) : null}
-            </div>
-            <div className="grid flex-1 gap-3 md:grid-cols-5">
-              {propertyMeta.map((item) => (
-                <div key={item.key} className="relative flex flex-col items-center gap-1.5">
-                  {negatedAxes.includes(item.key) ? (
-                    <div
-                      className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.08em] text-rose-300"
-                      title="This priority was explicitly negated in the query, so the scorer intentionally down-weighted it."
-                    >
-                      negated
-                    </div>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenWeight((current) => (current === item.key ? null : item.key))
-                    }
-                    className={`text-[9px] uppercase tracking-[0.08em] ${
-                      negatedAxes.includes(item.key) ? "line-through text-rose-300" : ""
-                    }`}
-                    title={
-                      negatedAxes.includes(item.key)
-                        ? "Negated by the query"
-                        : undefined
-                    }
-                    style={{ color: negatedAxes.includes(item.key) ? "#fda4af" : item.color }}
-                  >
-                    {item.label}
-                  </button>
-                  <div className="h-[2px] w-full rounded-full bg-surface-800">
-                    <div
-                      className="h-[2px] rounded-full transition-[width] duration-300"
-                      style={{
-                        backgroundColor: negatedAxes.includes(item.key) ? "#fb7185" : item.color,
-                        width: `${toPercent(weights[item.key])}%`
-                      }}
-                    />
-                  </div>
-                  <span
-                    className={`font-mono text-[9px] ${
-                      negatedAxes.includes(item.key) ? "text-rose-300" : ""
-                    }`}
-                    style={{ color: negatedAxes.includes(item.key) ? undefined : item.color }}
-                  >
-                    {toPercent(weights[item.key])}%
-                  </span>
-
-                  {openWeight === item.key ? (
-                    <div className="absolute left-0 top-full z-20 mt-2 w-full rounded-xl border border-surface-700 bg-surface-900 p-3 shadow-xl">
-                      <input
-                        type="range"
-                        min={5}
-                        max={80}
-                        value={toPercent(weights[item.key])}
-                        onChange={(event) =>
-                          updateWeight(item.key, Number(event.target.value) / 100)
-                        }
-                      />
-                    </div>
-                  ) : null}
+            {autoDetected ? (
+              <span className="rounded border border-amber-500/30 bg-amber-500/20 px-1.5 py-0.5 text-[9px] text-amber-400">
+                Auto-detected
+              </span>
+            ) : null}
+          </div>
+          <div className="flex gap-3">
+            {Object.entries(displayWeights).map(([key, value]) => (
+              <div key={key} className="flex-1 text-center">
+                <div
+                  className="mb-1 text-[9px] uppercase tracking-wide"
+                  style={{ color: WEIGHT_COLORS[key as keyof typeof WEIGHT_COLORS] }}
+                >
+                  {key}
                 </div>
-              ))}
-            </div>
+                <div className="h-1 rounded-full bg-zinc-700">
+                  <div
+                    className="h-1 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${value}%`,
+                      background: WEIGHT_COLORS[key as keyof typeof WEIGHT_COLORS],
+                      opacity: negatedAxes.includes(key) ? 0.3 : 1
+                    }}
+                  />
+                </div>
+                <div
+                  className="mt-0.5 text-[9px] font-mono"
+                  style={{
+                    color: negatedAxes.includes(key)
+                      ? "#52525b"
+                      : WEIGHT_COLORS[key as keyof typeof WEIGHT_COLORS]
+                  }}
+                >
+                  {value}%
+                  {negatedAxes.includes(key) ? " x" : ""}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-surface-800 px-[18px] py-[10px]">
-          <span className="text-[10px] text-zinc-600">⌘ Enter to search</span>
+        <div className="border-t border-zinc-800" />
+
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-[10px] text-zinc-600">⌘↵ to search</span>
           <button
-            type="button"
-            disabled={loading}
             onClick={handleSubmit}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2 text-[12px] font-bold text-brand-subtle transition hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={loading || !query.trim()}
+            className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2 text-xs font-bold text-zinc-950 transition-all duration-150 hover:bg-amber-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {loading ? (
               <>
-                <svg
-                  className="h-3.5 w-3.5 animate-spin"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
+                <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle
+                    className="opacity-25"
                     cx="12"
                     cy="12"
                     r="10"
                     stroke="currentColor"
-                    strokeOpacity="0.25"
-                    strokeWidth="3"
+                    strokeWidth="4"
                   />
                   <path
-                    d="M22 12a10 10 0 0 1-10 10"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z"
                   />
                 </svg>
                 Searching...

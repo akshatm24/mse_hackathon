@@ -6,6 +6,12 @@ const nextConfig = {
       "@google/generative-ai",
       "@xenova/transformers"
     ]
+  },
+  webpack: (config, { dev }) => {
+    if (!dev) {
+      config.cache = false;
+    }
+    return config;
   }
 };
 

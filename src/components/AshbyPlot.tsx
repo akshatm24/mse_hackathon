@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Label,
   Legend,
@@ -13,53 +12,38 @@ import {
   ZAxis
 } from "recharts";
 
-import type { Material } from "@/types";
+import { ENGINEERING_MATERIALS } from "@/data";
 
 const COLORS: Record<string, string> = {
-  Metal: "#60A5FA",
-  Polymer: "#34D399",
-  Ceramic: "#F87171",
-  Composite: "#FBBF24",
-  Solder: "#A78BFA"
+  Metal: "#60a5fa",
+  Polymer: "#34d399",
+  Ceramic: "#f87171",
+  Composite: "#fbbf24",
+  Solder: "#a78bfa"
 };
 
 export default function AshbyPlot() {
-  const [materials, setMaterials] = useState<Material[]>([]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function load() {
-      const response = await fetch("/api/materials?scope=engineering");
-      const payload = (await response.json()) as { materials?: Material[] };
-      if (active) {
-        setMaterials(payload.materials ?? []);
-      }
-    }
-
-    void load();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const byCategory = materials
-    .filter((material) => material.density_g_cm3 != null && material.tensile_strength_mpa != null)
-    .reduce<Record<string, Array<{ x: number; y: number; name: string }>>>((acc, material) => {
+  const grouped = ENGINEERING_MATERIALS.filter(
+    (material) =>
+      material.density_g_cm3 != null && material.tensile_strength_mpa != null
+  ).reduce<Record<string, Array<{ x: number; y: number; name: string }>>>(
+    (accumulator, material) => {
       const key = material.category;
-      acc[key] ??= [];
-      acc[key].push({
+      accumulator[key] ??= [];
+      accumulator[key].push({
         x: material.density_g_cm3 as number,
         y: material.tensile_strength_mpa as number,
         name: material.name
       });
-      return acc;
-    }, {});
+      return accumulator;
+    },
+    {}
+  );
 
   return (
-    <div className="w-full rounded-2xl border border-surface-800 bg-surface-900 p-4">
+    <div className="w-full rounded-xl border border-surface-800 bg-surface-900 p-4">
       <h2 className="mb-2 text-sm font-semibold text-white">
-        Ashby Plot — Strength vs Density
+        Ashby Plot - Strength vs Density
       </h2>
       <div className="h-[480px]">
         <ResponsiveContainer width="100%" height="100%">
@@ -70,14 +54,14 @@ export default function AshbyPlot() {
               name="Density"
               unit=" g/cm³"
               domain={[0, "auto"]}
-              stroke="#9CA3AF"
-              tick={{ fill: "#9CA3AF", fontSize: 11 }}
+              stroke="#9ca3af"
+              tick={{ fill: "#9ca3af", fontSize: 11 }}
             >
               <Label
                 value="Density (g/cm³)"
                 position="insideBottom"
                 offset={-15}
-                fill="#9CA3AF"
+                fill="#9ca3af"
                 fontSize={12}
               />
             </XAxis>
@@ -87,14 +71,14 @@ export default function AshbyPlot() {
               name="Tensile Strength"
               unit=" MPa"
               domain={[0, "auto"]}
-              stroke="#9CA3AF"
-              tick={{ fill: "#9CA3AF", fontSize: 11 }}
+              stroke="#9ca3af"
+              tick={{ fill: "#9ca3af", fontSize: 11 }}
             >
               <Label
                 value="Tensile Strength (MPa)"
                 angle={-90}
                 position="insideLeft"
-                fill="#9CA3AF"
+                fill="#9ca3af"
                 fontSize={12}
               />
             </YAxis>
@@ -102,23 +86,27 @@ export default function AshbyPlot() {
             <Tooltip
               cursor={{ strokeDasharray: "3 3" }}
               contentStyle={{
-                backgroundColor: "#1F2937",
+                backgroundColor: "#1f2937",
                 border: "none",
                 borderRadius: 8
               }}
-              labelStyle={{ color: "#F3F4F6" }}
-              formatter={(value, name) => [
-                name === "Density" ? `${value} g/cm³` : `${value} MPa`,
-                name
-              ]}
+              labelStyle={{ color: "#f3f4f6" }}
+              formatter={(value, name) => {
+                const numericValue =
+                  typeof value === "number" ? value : Number(value ?? 0);
+                return [
+                  name === "Density" ? `${numericValue} g/cm³` : `${numericValue} MPa`,
+                  String(name)
+                ];
+              }}
             />
-            <Legend wrapperStyle={{ color: "#D1D5DB", fontSize: 12 }} />
-            {Object.entries(byCategory).map(([category, materials]) => (
+            <Legend wrapperStyle={{ color: "#d1d5db", fontSize: 12 }} />
+            {Object.entries(grouped).map(([category, materials]) => (
               <Scatter
                 key={category}
                 name={category}
                 data={materials}
-                fill={COLORS[category] ?? "#94A3B8"}
+                fill={COLORS[category] ?? "#94a3b8"}
                 opacity={0.75}
               />
             ))}

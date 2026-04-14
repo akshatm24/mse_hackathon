@@ -28,6 +28,7 @@ export function sourceBadge(material: Material) {
   }
 
   const source = firstSource(material);
+  if (/makeitfrom/i.test(source) || /makeitfrom/i.test(material.data_source)) return "MIF";
   if (source === "MP") return "MP";
   if (source === "AZoM") return "AZoM";
   if (source === "Wikipedia") return "Wiki";
@@ -45,6 +46,9 @@ export function sourceGroup(material: Material) {
   }
 
   const source = firstSource(material);
+  if (/makeitfrom/i.test(source) || /makeitfrom/i.test(material.data_source)) {
+    return "MakeItFrom";
+  }
   if (source === "MP") return "Materials Project";
   if (["AZoM", "Wikipedia", "MatWeb", "EngineeringToolbox"].includes(source)) {
     return "Web Scraped";

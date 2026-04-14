@@ -81,6 +81,12 @@ export function selectFromCandidates(
     if (!negatedAxes.includes("thermal") && /heat|hot|temp|motor/.test(q)) {
       intent += typeof material.max_service_temp_c === "number" ? Math.min(1, material.max_service_temp_c / 500) : 0;
     }
+    if (negatedAxes.includes("thermal") && /cryogen|nitrogen|cold|low\s+temp/.test(q)) {
+      intent +=
+        typeof material.max_service_temp_c === "number"
+          ? Math.max(0, 1 - material.max_service_temp_c / 1000)
+          : 0;
+    }
     if (!negatedAxes.includes("weight") && /light|drone|aircraft/.test(q)) {
       intent += typeof material.density_g_cm3 === "number" ? Math.max(0, 1 - material.density_g_cm3 / 20) : 0;
     }
@@ -103,7 +109,7 @@ export function selectFromCandidates(
       intent += material.corrosion_resistance ? ranking[material.corrosion_resistance] ?? 0 : 0;
     }
 
-    const combined = kwScore * 0.35 + intent * 0.35 + (material.score / 100) * 0.3;
+    const combined = kwScore * 0.32 + intent * 0.38 + (material.score / 100) * 0.3;
     return { material, combined };
   });
 

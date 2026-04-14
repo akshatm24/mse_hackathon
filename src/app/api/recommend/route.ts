@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { ENGINEERING_MATERIALS } from "@/data";
-import { deduplicateById } from "@/lib/dedup";
 import { extractConstraints, generateExplanation, validateWeights } from "@/lib/gemini";
+import { materialsDB } from "@/lib/materials-db";
 import { selectFromCandidates } from "@/lib/rag";
 import { scoreMaterials } from "@/lib/scoring";
 import type { UserConstraints } from "@/types";
@@ -88,48 +87,46 @@ async function buildResponse(
   constraints = validateWeights(constraints);
   constraints = mergeConstraints(constraints, manualConstraints);
 
-  const rankedMaterials = scoreMaterials(constraints, ENGINEERING_MATERIALS);
-  const deduped = deduplicateById(rankedMaterials);
+  const rankedMaterials = scoreMaterials(constraints, materialsDB).slice(0, 10);
   const ragContext = selectFromCandidates(
     query,
-    deduped.slice(0, 10),
+    rankedMaterials,
     constraints._negatedAxes ?? [],
     5
   );
-  const llmExplanation = await generateExplanation(query, deduped, history);
+  const llmExplanation = await generateExplanation(query, ragContext, history);
 
   return {
-    rankedMaterials: deduped,
+    rankedMaterials,
     llmExplanation,
     inferredConstraints: constraints,
     clarifications: "Constraints auto-detected from query.",
-    matchCount: deduped.length,
+    matchCount: rankedMaterials.length,
     ragMaterials: ragContext.map((material) => material.name),
-    warnings: Array.from(new Set(deduped.flatMap((material) => material.warnings ?? []))).slice(
-      0,
-      6
-    )
+    warnings: Array.from(
+      new Set(rankedMaterials.flatMap((material) => material.warnings ?? []))
+    ).slice(0, 6)
   };
 }
 
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const query = req.nextUrl.searchParams.get("query");
+    const query = request.nextUrl.searchParams.get("query");
     if (!query?.trim()) {
       return NextResponse.json({ error: "query required" }, { status: 400 });
     }
 
     const data = await buildResponse(query.trim());
     return NextResponse.json(data);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { query, history, manualConstraints } = (await req.json()) as {
+    const { query, history, manualConstraints } = (await request.json()) as {
       query: string;
       history?: { role: string; parts: string }[];
       manualConstraints?: Partial<UserConstraints>;
@@ -146,8 +143,8 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json(data);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

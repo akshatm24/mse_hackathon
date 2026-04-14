@@ -1,0 +1,278 @@
+{
+  "summary": {
+    "baseUrl": "http://localhost:3000",
+    "total": 15,
+    "correct": 0,
+    "acceptable": 6,
+    "wrong": 9,
+    "warningMissing": 0,
+    "failures": [
+      {
+        "id": "exact-niti",
+        "formula": "NiTi",
+        "status": "acceptable but suboptimal",
+        "reason": "method hybrid-screening differed from expected exact-match",
+        "responseStatus": 200,
+        "winner": "HSLA Steel A36"
+      },
+      {
+        "id": "exact-alumina",
+        "formula": "Al2O3",
+        "status": "wrong",
+        "reason": "Alumina Al2O3 did not match any expected analogue",
+        "responseStatus": 200,
+        "winner": "Alumina Al2O3"
+      },
+      {
+        "id": "exact-ti3sic2",
+        "formula": "Ti3SiC2",
+        "status": "acceptable but suboptimal",
+        "reason": "method analog-fallback differed from expected exact-match",
+        "responseStatus": 200,
+        "winner": "Stainless Steel 316L"
+      },
+      {
+        "id": "hybrid-fe70ni30",
+        "formula": "Fe70Ni30",
+        "context": "low expansion precision alloy",
+        "status": "wrong",
+        "reason": "Carbon Steel 1020 did not match any expected analogue",
+        "responseStatus": 200,
+        "winner": "Carbon Steel 1020"
+      },
+      {
+        "id": "hybrid-cu60zn40",
+        "formula": "Cu60Zn40",
+        "context": "machinable conductive fitting",
+        "status": "acceptable but suboptimal",
+        "reason": "method analog-fallback differed from expected hybrid-screening",
+        "responseStatus": 200,
+        "winner": "Copper C110"
+      },
+      {
+        "id": "hybrid-ni3al",
+        "formula": "Ni3Al",
+        "context": "high temperature intermetallic screening",
+        "status": "wrong",
+        "reason": "Cupronickel 90/10 did not match any expected analogue",
+        "responseStatus": 200,
+        "winner": "Cupronickel 90/10"
+      },
+      {
+        "id": "hybrid-ti3al",
+        "formula": "Ti3Al",
+        "context": "lightweight aerospace intermetallic",
+        "status": "acceptable but suboptimal",
+        "reason": "method exact-match differed from expected hybrid-screening",
+        "responseStatus": 200,
+        "winner": "Ti3Al (MP)"
+      },
+      {
+        "id": "hybrid-cuzn",
+        "formula": "Cu55Zn45",
+        "context": "electrical hardware",
+        "status": "acceptable but suboptimal",
+        "reason": "method analog-fallback differed from expected hybrid-screening",
+        "responseStatus": 200,
+        "winner": "Copper C110"
+      },
+      {
+        "id": "hybrid-hea",
+        "formula": "Fe20Ni20Co20Cr20Mn20",
+        "context": "high entropy alloy concept screening",
+        "status": "acceptable but suboptimal",
+        "reason": "method analog-fallback differed from expected hybrid-screening",
+        "responseStatus": 200,
+        "winner": "Aluminum 7075-T6"
+      },
+      {
+        "id": "fallback-gaas",
+        "formula": "GaAs",
+        "context": "semiconductor substrate",
+        "status": "wrong",
+        "reason": "predicted category Metal did not match Ceramic",
+        "responseStatus": 200,
+        "winner": "Silicon Carbide SiC"
+      },
+      {
+        "id": "fallback-gan",
+        "formula": "GaN",
+        "context": "wide band gap electronics",
+        "status": "wrong",
+        "reason": "Molybdenum Mo did not match any expected analogue",
+        "responseStatus": 200,
+        "winner": "Molybdenum Mo"
+      },
+      {
+        "id": "hybrid-wn",
+        "formula": "WN",
+        "context": "hard conductive nitride coating",
+        "status": "wrong",
+        "reason": "Sialon (Si6-zAlzOzN8-z) did not match any expected analogue",
+        "responseStatus": 200,
+        "winner": "Sialon (Si6-zAlzOzN8-z)"
+      },
+      {
+        "id": "hybrid-zrc",
+        "formula": "ZrC",
+        "context": "ultra high temperature ceramic",
+        "status": "wrong",
+        "reason": "Alumina Al2O3 did not match any expected analogue",
+        "responseStatus": 200,
+        "winner": "Alumina Al2O3"
+      },
+      {
+        "id": "parse-spaced",
+        "formula": "Fe 70 Ni 30",
+        "context": "precision alloy",
+        "status": "wrong",
+        "reason": "Carbon Steel 1020 did not match any expected analogue",
+        "responseStatus": 200,
+        "winner": "Carbon Steel 1020"
+      },
+      {
+        "id": "fallback-unparsed",
+        "formula": "nickel titanium-ish",
+        "context": "shape memory wire",
+        "status": "wrong",
+        "reason": "Nitinol (NiTi 50-50) did not match any expected analogue",
+        "responseStatus": 200,
+        "winner": "Nitinol (NiTi 50-50)"
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "exact-niti",
+      "formula": "NiTi",
+      "status": "acceptable but suboptimal",
+      "reason": "method hybrid-screening differed from expected exact-match",
+      "responseStatus": 200,
+      "winner": "HSLA Steel A36"
+    },
+    {
+      "id": "exact-alumina",
+      "formula": "Al2O3",
+      "status": "wrong",
+      "reason": "Alumina Al2O3 did not match any expected analogue",
+      "responseStatus": 200,
+      "winner": "Alumina Al2O3"
+    },
+    {
+      "id": "exact-ti3sic2",
+      "formula": "Ti3SiC2",
+      "status": "acceptable but suboptimal",
+      "reason": "method analog-fallback differed from expected exact-match",
+      "responseStatus": 200,
+      "winner": "Stainless Steel 316L"
+    },
+    {
+      "id": "hybrid-fe70ni30",
+      "formula": "Fe70Ni30",
+      "context": "low expansion precision alloy",
+      "status": "wrong",
+      "reason": "Carbon Steel 1020 did not match any expected analogue",
+      "responseStatus": 200,
+      "winner": "Carbon Steel 1020"
+    },
+    {
+      "id": "hybrid-cu60zn40",
+      "formula": "Cu60Zn40",
+      "context": "machinable conductive fitting",
+      "status": "acceptable but suboptimal",
+      "reason": "method analog-fallback differed from expected hybrid-screening",
+      "responseStatus": 200,
+      "winner": "Copper C110"
+    },
+    {
+      "id": "hybrid-ni3al",
+      "formula": "Ni3Al",
+      "context": "high temperature intermetallic screening",
+      "status": "wrong",
+      "reason": "Cupronickel 90/10 did not match any expected analogue",
+      "responseStatus": 200,
+      "winner": "Cupronickel 90/10"
+    },
+    {
+      "id": "hybrid-ti3al",
+      "formula": "Ti3Al",
+      "context": "lightweight aerospace intermetallic",
+      "status": "acceptable but suboptimal",
+      "reason": "method exact-match differed from expected hybrid-screening",
+      "responseStatus": 200,
+      "winner": "Ti3Al (MP)"
+    },
+    {
+      "id": "hybrid-cuzn",
+      "formula": "Cu55Zn45",
+      "context": "electrical hardware",
+      "status": "acceptable but suboptimal",
+      "reason": "method analog-fallback differed from expected hybrid-screening",
+      "responseStatus": 200,
+      "winner": "Copper C110"
+    },
+    {
+      "id": "hybrid-hea",
+      "formula": "Fe20Ni20Co20Cr20Mn20",
+      "context": "high entropy alloy concept screening",
+      "status": "acceptable but suboptimal",
+      "reason": "method analog-fallback differed from expected hybrid-screening",
+      "responseStatus": 200,
+      "winner": "Aluminum 7075-T6"
+    },
+    {
+      "id": "fallback-gaas",
+      "formula": "GaAs",
+      "context": "semiconductor substrate",
+      "status": "wrong",
+      "reason": "predicted category Metal did not match Ceramic",
+      "responseStatus": 200,
+      "winner": "Silicon Carbide SiC"
+    },
+    {
+      "id": "fallback-gan",
+      "formula": "GaN",
+      "context": "wide band gap electronics",
+      "status": "wrong",
+      "reason": "Molybdenum Mo did not match any expected analogue",
+      "responseStatus": 200,
+      "winner": "Molybdenum Mo"
+    },
+    {
+      "id": "hybrid-wn",
+      "formula": "WN",
+      "context": "hard conductive nitride coating",
+      "status": "wrong",
+      "reason": "Sialon (Si6-zAlzOzN8-z) did not match any expected analogue",
+      "responseStatus": 200,
+      "winner": "Sialon (Si6-zAlzOzN8-z)"
+    },
+    {
+      "id": "hybrid-zrc",
+      "formula": "ZrC",
+      "context": "ultra high temperature ceramic",
+      "status": "wrong",
+      "reason": "Alumina Al2O3 did not match any expected analogue",
+      "responseStatus": 200,
+      "winner": "Alumina Al2O3"
+    },
+    {
+      "id": "parse-spaced",
+      "formula": "Fe 70 Ni 30",
+      "context": "precision alloy",
+      "status": "wrong",
+      "reason": "Carbon Steel 1020 did not match any expected analogue",
+      "responseStatus": 200,
+      "winner": "Carbon Steel 1020"
+    },
+    {
+      "id": "fallback-unparsed",
+      "formula": "nickel titanium-ish",
+      "context": "shape memory wire",
+      "status": "wrong",
+      "reason": "Nitinol (NiTi 50-50) did not match any expected analogue",
+      "responseStatus": 200,
+      "winner": "Nitinol (NiTi 50-50)"
+    }
+  ]
+}

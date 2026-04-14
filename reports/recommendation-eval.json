@@ -1,0 +1,2022 @@
+{
+  "summary": {
+    "baseUrl": "http://localhost:3000",
+    "total": 140,
+    "correct": 57,
+    "acceptable": 14,
+    "wrong": 69,
+    "warningMissing": 0,
+    "explanationMismatch": 0,
+    "failures": [
+      {
+        "id": "cheap-general-05",
+        "group": "cheap-general",
+        "query": "most economical material available",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "HDPE"
+      },
+      {
+        "id": "cheap-general-06",
+        "group": "cheap-general",
+        "query": "I only care about low cost material",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "HDPE"
+      },
+      {
+        "id": "cheap-general-10",
+        "group": "cheap-general",
+        "query": "absolute cheapest material",
+        "status": "wrong",
+        "reason": "HDPE did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "HDPE"
+      },
+      {
+        "id": "cheap-structural-01",
+        "group": "cheap-structural",
+        "query": "cheap structural metal bracket",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Spring Steel 1095"
+      },
+      {
+        "id": "cheap-structural-02",
+        "group": "cheap-structural",
+        "query": "budget metal for a structural support",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Spring Steel 1095"
+      },
+      {
+        "id": "cheap-structural-03",
+        "group": "cheap-structural",
+        "query": "low cost load bearing steel",
+        "status": "wrong",
+        "reason": "banned category appeared in top 3",
+        "responseStatus": 200,
+        "topMaterial": "Maraging Steel 300"
+      },
+      {
+        "id": "cheap-structural-04",
+        "group": "cheap-structural",
+        "query": "economical structural metal plate",
+        "status": "wrong",
+        "reason": "Nylon PA66 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Nylon PA66"
+      },
+      {
+        "id": "cheap-structural-05",
+        "group": "cheap-structural",
+        "query": "cheap metal for a machine frame",
+        "status": "wrong",
+        "reason": "Aluminum 6061-T6 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Aluminum 6061-T6"
+      },
+      {
+        "id": "cheap-structural-07",
+        "group": "cheap-structural",
+        "query": "structural steel on a tight budget",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Spring Steel 1095"
+      },
+      {
+        "id": "cheap-structural-08",
+        "group": "cheap-structural",
+        "query": "least expensive structural alloy",
+        "status": "wrong",
+        "reason": "banned category appeared in top 3",
+        "responseStatus": 200,
+        "topMaterial": "Maraging Steel 300"
+      },
+      {
+        "id": "cheap-structural-09",
+        "group": "cheap-structural",
+        "query": "budget friendly load bearing metal",
+        "status": "wrong",
+        "reason": "cost weight 0.200 below expected 0.450",
+        "responseStatus": 200,
+        "topMaterial": "Maraging Steel 300"
+      },
+      {
+        "id": "cheap-structural-10",
+        "group": "cheap-structural",
+        "query": "cheap structural member material",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Spring Steel 1095"
+      },
+      {
+        "id": "fdm-motor-01",
+        "group": "fdm-motor",
+        "query": "lightweight 3D printed bracket for 85 degree motor heat",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-motor-02",
+        "group": "fdm-motor",
+        "query": "3D printable motor bracket that should not warp at 85C",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-motor-03",
+        "group": "fdm-motor",
+        "query": "desktop FDM bracket for motor heat around 85 celsius",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-motor-04",
+        "group": "fdm-motor",
+        "query": "light FDM motor mount for 85 degree service",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-motor-05",
+        "group": "fdm-motor",
+        "query": "3d printed plastic bracket for warm motor housing",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-motor-06",
+        "group": "fdm-motor",
+        "query": "petg vs nylon style query for motor bracket heat",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-motor-07",
+        "group": "fdm-motor",
+        "query": "lightweight printable bracket that cannot melt near an 85C motor",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-motor-08",
+        "group": "fdm-motor",
+        "query": "desktop printed support beside an 85 degree motor",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "fdm-motor-09",
+        "group": "fdm-motor",
+        "query": "fdm printable motor bracket with moderate heat",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-motor-10",
+        "group": "fdm-motor",
+        "query": "motor heat bracket for standard desktop 3d printer",
+        "status": "wrong",
+        "reason": "PEKK did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "fdm-outdoor-02",
+        "group": "fdm-outdoor",
+        "query": "UV stable printable polymer for outside use",
+        "status": "wrong",
+        "reason": "corrosion weight 0.080 below expected 0.200",
+        "responseStatus": 200,
+        "topMaterial": "Nylon PA66"
+      },
+      {
+        "id": "fdm-outdoor-03",
+        "group": "fdm-outdoor",
+        "query": "plastic for outdoor sunlight and rain",
+        "status": "wrong",
+        "reason": "HDPE did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "HDPE"
+      },
+      {
+        "id": "fdm-outdoor-05",
+        "group": "fdm-outdoor",
+        "query": "polymer for exterior use with UV and moisture",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "LCP (Liquid Crystal Polymer)"
+      },
+      {
+        "id": "fdm-outdoor-08",
+        "group": "fdm-outdoor",
+        "query": "UV resistant polymer housing for field use",
+        "status": "wrong",
+        "reason": "corrosion weight 0.080 below expected 0.200",
+        "responseStatus": 200,
+        "topMaterial": "LCP (Liquid Crystal Polymer)"
+      },
+      {
+        "id": "fdm-outdoor-10",
+        "group": "fdm-outdoor",
+        "query": "outside-use engineering polymer recommendation",
+        "status": "wrong",
+        "reason": "corrosion weight 0.059 below expected 0.200",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "drone-frame-03",
+        "group": "drone-frame",
+        "query": "very light structural material for quadcopter arms",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Kevlar/Epoxy"
+      },
+      {
+        "id": "drone-frame-10",
+        "group": "drone-frame",
+        "query": "UAV frame material where density matters most",
+        "status": "wrong",
+        "reason": "weight weight 0.180 below expected 0.500",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "marine-pump-01",
+        "group": "marine-pump",
+        "query": "marine pump housing seawater",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "marine-pump-02",
+        "group": "marine-pump",
+        "query": "pump housing for seawater service",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "marine-pump-03",
+        "group": "marine-pump",
+        "query": "metal for a seawater pump body",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "marine-pump-04",
+        "group": "marine-pump",
+        "query": "ocean water pump casing material",
+        "status": "wrong",
+        "reason": "Inconel 718 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Inconel 718"
+      },
+      {
+        "id": "marine-pump-05",
+        "group": "marine-pump",
+        "query": "corrosion resistant alloy for marine pump",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "marine-pump-06",
+        "group": "marine-pump",
+        "query": "saltwater pump housing high pressure",
+        "status": "wrong",
+        "reason": "Stainless Steel 316L did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Stainless Steel 316L"
+      },
+      {
+        "id": "marine-pump-07",
+        "group": "marine-pump",
+        "query": "pump impeller housing in seawater environment",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "marine-pump-08",
+        "group": "marine-pump",
+        "query": "marine fluid handling pump alloy",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "marine-pump-09",
+        "group": "marine-pump",
+        "query": "seawater pump metal recommendation",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "marine-pump-10",
+        "group": "marine-pump",
+        "query": "ocean-exposed pump housing material",
+        "status": "wrong",
+        "reason": "Inconel 718 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Inconel 718"
+      },
+      {
+        "id": "acid-chemical-01",
+        "group": "acid-chemical",
+        "query": "acid resistant metal",
+        "status": "wrong",
+        "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "acid-chemical-02",
+        "group": "acid-chemical",
+        "query": "chemical resistant alloy for corrosive liquid",
+        "status": "wrong",
+        "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "acid-chemical-03",
+        "group": "acid-chemical",
+        "query": "metal for strong acid exposure",
+        "status": "wrong",
+        "reason": "corrosion weight 0.200 below expected 0.350",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "acid-chemical-04",
+        "group": "acid-chemical",
+        "query": "corrosion resistant alloy for wet chemical service",
+        "status": "wrong",
+        "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "acid-chemical-05",
+        "group": "acid-chemical",
+        "query": "alloy for aggressive chemical environment",
+        "status": "wrong",
+        "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "acid-chemical-06",
+        "group": "acid-chemical",
+        "query": "chemical pump alloy with high corrosion resistance",
+        "status": "wrong",
+        "reason": "Stainless Steel 316L did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Stainless Steel 316L"
+      },
+      {
+        "id": "acid-chemical-07",
+        "group": "acid-chemical",
+        "query": "metal for acidic process equipment",
+        "status": "wrong",
+        "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "acid-chemical-08",
+        "group": "acid-chemical",
+        "query": "corrosion proof metal for chemical plant",
+        "status": "wrong",
+        "reason": "banned category appeared in top 3",
+        "responseStatus": 200,
+        "topMaterial": "PEKK"
+      },
+      {
+        "id": "acid-chemical-09",
+        "group": "acid-chemical",
+        "query": "alloy for acidic media and corrosion",
+        "status": "wrong",
+        "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "acid-chemical-10",
+        "group": "acid-chemical",
+        "query": "metal recommendation for corrosive chemical handling",
+        "status": "wrong",
+        "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "probe-tips-03",
+        "group": "probe-tips",
+        "query": "hard conductive probe tip material for repeated thermal cycling",
+        "status": "wrong",
+        "reason": "strength weight 0.204 below expected 0.250",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "probe-tips-05",
+        "group": "probe-tips",
+        "query": "probe tip alloy for electrical measurements at 200 celsius",
+        "status": "wrong",
+        "reason": "strength weight 0.204 below expected 0.250",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "probe-tips-07",
+        "group": "probe-tips",
+        "query": "electrode tip material for conductivity test fixture",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "probe-tips-08",
+        "group": "probe-tips",
+        "query": "conductive contact tip for hot pellet measurements",
+        "status": "wrong",
+        "reason": "strength weight 0.204 below expected 0.250",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "conductive-contacts-01",
+        "group": "conductive-contacts",
+        "query": "electrically conductive connector spring material",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "conductive-contacts-02",
+        "group": "conductive-contacts",
+        "query": "conductive contact alloy for electrical terminal",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "conductive-contacts-03",
+        "group": "conductive-contacts",
+        "query": "low resistivity metal for current carrying contact",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "conductive-contacts-04",
+        "group": "conductive-contacts",
+        "query": "electrical connector material with good conductivity",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "conductive-contacts-05",
+        "group": "conductive-contacts",
+        "query": "conductive alloy for durable contacts",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Maraging Steel 300"
+      },
+      {
+        "id": "conductive-contacts-06",
+        "group": "conductive-contacts",
+        "query": "contact material for electrical probes",
+        "status": "wrong",
+        "reason": "Tungsten W did not match expected or acceptable winners",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "conductive-contacts-07",
+        "group": "conductive-contacts",
+        "query": "copper like material for connector pins",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "conductive-contacts-08",
+        "group": "conductive-contacts",
+        "query": "conductive spring contact metal",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "conductive-contacts-09",
+        "group": "conductive-contacts",
+        "query": "metal for low resistivity connector hardware",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "CFRP (Carbon Fiber UD)"
+      },
+      {
+        "id": "conductive-contacts-10",
+        "group": "conductive-contacts",
+        "query": "best conductive contact material",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Tungsten W"
+      },
+      {
+        "id": "bga-solder-01",
+        "group": "bga-solder",
+        "query": "lead free BGA solder for automotive electronics",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "bga-solder-02",
+        "group": "bga-solder",
+        "query": "RoHS BGA solder with thermal cycling to 125C",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "bga-solder-03",
+        "group": "bga-solder",
+        "query": "electronics solder joint for automotive BGA package",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "bga-solder-04",
+        "group": "bga-solder",
+        "query": "lead free reflow solder below 260C for BGA",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "bga-solder-05",
+        "group": "bga-solder",
+        "query": "solder alloy for package reliability and thermal cycling",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "bga-solder-06",
+        "group": "bga-solder",
+        "query": "BGA package solder with expansion mismatch concerns",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "bga-solder-07",
+        "group": "bga-solder",
+        "query": "automotive electronics solder recommendation",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "bga-solder-08",
+        "group": "bga-solder",
+        "query": "lead free SMT solder for thermal cycling service",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "bga-solder-09",
+        "group": "bga-solder",
+        "query": "BGA solder material under reflow and cycling",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "bga-solder-10",
+        "group": "bga-solder",
+        "query": "package solder for automotive board assembly",
+        "status": "wrong",
+        "reason": "banned category appeared in top 5",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "high-temp-insulator-01",
+        "group": "high-temp-insulator",
+        "query": "high temperature electrical insulator",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "high-temp-insulator-02",
+        "group": "high-temp-insulator",
+        "query": "ceramic insulator for hot electronics",
+        "status": "wrong",
+        "reason": "banned category appeared in top 3",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "high-temp-insulator-03",
+        "group": "high-temp-insulator",
+        "query": "electrical insulation material for high heat",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "high-temp-insulator-04",
+        "group": "high-temp-insulator",
+        "query": "thermally stable insulating ceramic",
+        "status": "wrong",
+        "reason": "banned category appeared in top 3",
+        "responseStatus": 200,
+        "topMaterial": "Kevlar/Epoxy"
+      },
+      {
+        "id": "high-temp-insulator-05",
+        "group": "high-temp-insulator",
+        "query": "hot zone electrical insulation material",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "high-temp-insulator-06",
+        "group": "high-temp-insulator",
+        "query": "insulating material with high service temperature",
+        "status": "wrong",
+        "reason": "banned category appeared in top 3",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "high-temp-insulator-07",
+        "group": "high-temp-insulator",
+        "query": "ceramic insulator for furnace-adjacent hardware",
+        "status": "wrong",
+        "reason": "banned category appeared in top 3",
+        "responseStatus": 200,
+        "topMaterial": "Carbon-Carbon Composite"
+      },
+      {
+        "id": "high-temp-insulator-08",
+        "group": "high-temp-insulator",
+        "query": "electrical insulator at elevated temperature",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "high-temp-insulator-09",
+        "group": "high-temp-insulator",
+        "query": "high heat insulating ceramic recommendation",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      },
+      {
+        "id": "high-temp-insulator-10",
+        "group": "high-temp-insulator",
+        "query": "electrical insulation for hot assembly",
+        "status": "acceptable but suboptimal",
+        "reason": "expected winner exists in top 3 but not at rank 1",
+        "responseStatus": 200,
+        "topMaterial": "Zirconia ZrO2"
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "cheap-general-01",
+      "group": "cheap-general",
+      "query": "cheapest material possible",
+      "status": "correct",
+      "reason": "Grey Cast Iron matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "cheap-general-02",
+      "group": "cheap-general",
+      "query": "give me the cheapest possible material",
+      "status": "correct",
+      "reason": "Grey Cast Iron matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "cheap-general-03",
+      "group": "cheap-general",
+      "query": "lowest cost material with no special needs",
+      "status": "correct",
+      "reason": "Grey Cast Iron matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "cheap-general-04",
+      "group": "cheap-general",
+      "query": "budget first material recommendation",
+      "status": "correct",
+      "reason": "Grey Cast Iron matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "cheap-general-05",
+      "group": "cheap-general",
+      "query": "most economical material available",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "HDPE"
+    },
+    {
+      "id": "cheap-general-06",
+      "group": "cheap-general",
+      "query": "I only care about low cost material",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "HDPE"
+    },
+    {
+      "id": "cheap-general-07",
+      "group": "cheap-general",
+      "query": "pick the cheapest engineering material",
+      "status": "correct",
+      "reason": "Grey Cast Iron matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "cheap-general-08",
+      "group": "cheap-general",
+      "query": "recommend the lowest cost option",
+      "status": "correct",
+      "reason": "Grey Cast Iron matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "cheap-general-09",
+      "group": "cheap-general",
+      "query": "find a very cheap material",
+      "status": "correct",
+      "reason": "Grey Cast Iron matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "cheap-general-10",
+      "group": "cheap-general",
+      "query": "absolute cheapest material",
+      "status": "wrong",
+      "reason": "HDPE did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "HDPE"
+    },
+    {
+      "id": "cheap-structural-01",
+      "group": "cheap-structural",
+      "query": "cheap structural metal bracket",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Spring Steel 1095"
+    },
+    {
+      "id": "cheap-structural-02",
+      "group": "cheap-structural",
+      "query": "budget metal for a structural support",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Spring Steel 1095"
+    },
+    {
+      "id": "cheap-structural-03",
+      "group": "cheap-structural",
+      "query": "low cost load bearing steel",
+      "status": "wrong",
+      "reason": "banned category appeared in top 3",
+      "responseStatus": 200,
+      "topMaterial": "Maraging Steel 300"
+    },
+    {
+      "id": "cheap-structural-04",
+      "group": "cheap-structural",
+      "query": "economical structural metal plate",
+      "status": "wrong",
+      "reason": "Nylon PA66 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Nylon PA66"
+    },
+    {
+      "id": "cheap-structural-05",
+      "group": "cheap-structural",
+      "query": "cheap metal for a machine frame",
+      "status": "wrong",
+      "reason": "Aluminum 6061-T6 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Aluminum 6061-T6"
+    },
+    {
+      "id": "cheap-structural-06",
+      "group": "cheap-structural",
+      "query": "affordable metal support bracket",
+      "status": "correct",
+      "reason": "Grey Cast Iron matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "cheap-structural-07",
+      "group": "cheap-structural",
+      "query": "structural steel on a tight budget",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Spring Steel 1095"
+    },
+    {
+      "id": "cheap-structural-08",
+      "group": "cheap-structural",
+      "query": "least expensive structural alloy",
+      "status": "wrong",
+      "reason": "banned category appeared in top 3",
+      "responseStatus": 200,
+      "topMaterial": "Maraging Steel 300"
+    },
+    {
+      "id": "cheap-structural-09",
+      "group": "cheap-structural",
+      "query": "budget friendly load bearing metal",
+      "status": "wrong",
+      "reason": "cost weight 0.200 below expected 0.450",
+      "responseStatus": 200,
+      "topMaterial": "Maraging Steel 300"
+    },
+    {
+      "id": "cheap-structural-10",
+      "group": "cheap-structural",
+      "query": "cheap structural member material",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Spring Steel 1095"
+    },
+    {
+      "id": "fdm-motor-01",
+      "group": "fdm-motor",
+      "query": "lightweight 3D printed bracket for 85 degree motor heat",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-motor-02",
+      "group": "fdm-motor",
+      "query": "3D printable motor bracket that should not warp at 85C",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-motor-03",
+      "group": "fdm-motor",
+      "query": "desktop FDM bracket for motor heat around 85 celsius",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-motor-04",
+      "group": "fdm-motor",
+      "query": "light FDM motor mount for 85 degree service",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-motor-05",
+      "group": "fdm-motor",
+      "query": "3d printed plastic bracket for warm motor housing",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-motor-06",
+      "group": "fdm-motor",
+      "query": "petg vs nylon style query for motor bracket heat",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-motor-07",
+      "group": "fdm-motor",
+      "query": "lightweight printable bracket that cannot melt near an 85C motor",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-motor-08",
+      "group": "fdm-motor",
+      "query": "desktop printed support beside an 85 degree motor",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "fdm-motor-09",
+      "group": "fdm-motor",
+      "query": "fdm printable motor bracket with moderate heat",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-motor-10",
+      "group": "fdm-motor",
+      "query": "motor heat bracket for standard desktop 3d printer",
+      "status": "wrong",
+      "reason": "PEKK did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-outdoor-01",
+      "group": "fdm-outdoor",
+      "query": "outdoor weather resistant plastic for enclosure",
+      "status": "correct",
+      "reason": "PEKK matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-outdoor-02",
+      "group": "fdm-outdoor",
+      "query": "UV stable printable polymer for outside use",
+      "status": "wrong",
+      "reason": "corrosion weight 0.080 below expected 0.200",
+      "responseStatus": 200,
+      "topMaterial": "Nylon PA66"
+    },
+    {
+      "id": "fdm-outdoor-03",
+      "group": "fdm-outdoor",
+      "query": "plastic for outdoor sunlight and rain",
+      "status": "wrong",
+      "reason": "HDPE did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "HDPE"
+    },
+    {
+      "id": "fdm-outdoor-04",
+      "group": "fdm-outdoor",
+      "query": "outdoor 3D printed cover with weather exposure",
+      "status": "correct",
+      "reason": "PEKK matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-outdoor-05",
+      "group": "fdm-outdoor",
+      "query": "polymer for exterior use with UV and moisture",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "LCP (Liquid Crystal Polymer)"
+    },
+    {
+      "id": "fdm-outdoor-06",
+      "group": "fdm-outdoor",
+      "query": "printable outdoor bracket exposed to sun",
+      "status": "correct",
+      "reason": "PEKK matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-outdoor-07",
+      "group": "fdm-outdoor",
+      "query": "weatherproof thermoplastic for an outdoor part",
+      "status": "correct",
+      "reason": "PEKK matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-outdoor-08",
+      "group": "fdm-outdoor",
+      "query": "UV resistant polymer housing for field use",
+      "status": "wrong",
+      "reason": "corrosion weight 0.080 below expected 0.200",
+      "responseStatus": 200,
+      "topMaterial": "LCP (Liquid Crystal Polymer)"
+    },
+    {
+      "id": "fdm-outdoor-09",
+      "group": "fdm-outdoor",
+      "query": "plastic for outdoor sensor enclosure",
+      "status": "correct",
+      "reason": "PEKK matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "fdm-outdoor-10",
+      "group": "fdm-outdoor",
+      "query": "outside-use engineering polymer recommendation",
+      "status": "wrong",
+      "reason": "corrosion weight 0.059 below expected 0.200",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "drone-frame-01",
+      "group": "drone-frame",
+      "query": "lightweight material for drone frame",
+      "status": "correct",
+      "reason": "CFRP (Carbon Fiber UD) matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "drone-frame-02",
+      "group": "drone-frame",
+      "query": "best low density material for a UAV frame",
+      "status": "correct",
+      "reason": "CFRP (Carbon Fiber UD) matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "drone-frame-03",
+      "group": "drone-frame",
+      "query": "very light structural material for quadcopter arms",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Kevlar/Epoxy"
+    },
+    {
+      "id": "drone-frame-04",
+      "group": "drone-frame",
+      "query": "airframe material for a small drone",
+      "status": "correct",
+      "reason": "CFRP (Carbon Fiber UD) matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "drone-frame-05",
+      "group": "drone-frame",
+      "query": "low mass frame material for UAV structure",
+      "status": "correct",
+      "reason": "CFRP (Carbon Fiber UD) matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "drone-frame-06",
+      "group": "drone-frame",
+      "query": "drone chassis material with high stiffness and low weight",
+      "status": "correct",
+      "reason": "CFRP (Carbon Fiber UD) matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "drone-frame-07",
+      "group": "drone-frame",
+      "query": "lightweight frame material for multirotor",
+      "status": "correct",
+      "reason": "CFRP (Carbon Fiber UD) matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "drone-frame-08",
+      "group": "drone-frame",
+      "query": "aerospace style low density material for drone body",
+      "status": "correct",
+      "reason": "CFRP (Carbon Fiber UD) matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "drone-frame-09",
+      "group": "drone-frame",
+      "query": "strong but lightweight material for drone skeleton",
+      "status": "correct",
+      "reason": "CFRP (Carbon Fiber UD) matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "drone-frame-10",
+      "group": "drone-frame",
+      "query": "UAV frame material where density matters most",
+      "status": "wrong",
+      "reason": "weight weight 0.180 below expected 0.500",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "marine-pump-01",
+      "group": "marine-pump",
+      "query": "marine pump housing seawater",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "marine-pump-02",
+      "group": "marine-pump",
+      "query": "pump housing for seawater service",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "marine-pump-03",
+      "group": "marine-pump",
+      "query": "metal for a seawater pump body",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "marine-pump-04",
+      "group": "marine-pump",
+      "query": "ocean water pump casing material",
+      "status": "wrong",
+      "reason": "Inconel 718 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Inconel 718"
+    },
+    {
+      "id": "marine-pump-05",
+      "group": "marine-pump",
+      "query": "corrosion resistant alloy for marine pump",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "marine-pump-06",
+      "group": "marine-pump",
+      "query": "saltwater pump housing high pressure",
+      "status": "wrong",
+      "reason": "Stainless Steel 316L did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Stainless Steel 316L"
+    },
+    {
+      "id": "marine-pump-07",
+      "group": "marine-pump",
+      "query": "pump impeller housing in seawater environment",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "marine-pump-08",
+      "group": "marine-pump",
+      "query": "marine fluid handling pump alloy",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "marine-pump-09",
+      "group": "marine-pump",
+      "query": "seawater pump metal recommendation",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "marine-pump-10",
+      "group": "marine-pump",
+      "query": "ocean-exposed pump housing material",
+      "status": "wrong",
+      "reason": "Inconel 718 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Inconel 718"
+    },
+    {
+      "id": "acid-chemical-01",
+      "group": "acid-chemical",
+      "query": "acid resistant metal",
+      "status": "wrong",
+      "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "acid-chemical-02",
+      "group": "acid-chemical",
+      "query": "chemical resistant alloy for corrosive liquid",
+      "status": "wrong",
+      "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "acid-chemical-03",
+      "group": "acid-chemical",
+      "query": "metal for strong acid exposure",
+      "status": "wrong",
+      "reason": "corrosion weight 0.200 below expected 0.350",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "acid-chemical-04",
+      "group": "acid-chemical",
+      "query": "corrosion resistant alloy for wet chemical service",
+      "status": "wrong",
+      "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "acid-chemical-05",
+      "group": "acid-chemical",
+      "query": "alloy for aggressive chemical environment",
+      "status": "wrong",
+      "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "acid-chemical-06",
+      "group": "acid-chemical",
+      "query": "chemical pump alloy with high corrosion resistance",
+      "status": "wrong",
+      "reason": "Stainless Steel 316L did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Stainless Steel 316L"
+    },
+    {
+      "id": "acid-chemical-07",
+      "group": "acid-chemical",
+      "query": "metal for acidic process equipment",
+      "status": "wrong",
+      "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "acid-chemical-08",
+      "group": "acid-chemical",
+      "query": "corrosion proof metal for chemical plant",
+      "status": "wrong",
+      "reason": "banned category appeared in top 3",
+      "responseStatus": 200,
+      "topMaterial": "PEKK"
+    },
+    {
+      "id": "acid-chemical-09",
+      "group": "acid-chemical",
+      "query": "alloy for acidic media and corrosion",
+      "status": "wrong",
+      "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "acid-chemical-10",
+      "group": "acid-chemical",
+      "query": "metal recommendation for corrosive chemical handling",
+      "status": "wrong",
+      "reason": "Zirconia ZrO2 did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "probe-tips-01",
+      "group": "probe-tips",
+      "query": "4-point probe station tips for conductivity measurement",
+      "status": "correct",
+      "reason": "Tungsten W matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-02",
+      "group": "probe-tips",
+      "query": "electrically conductive probe tips for sintered copper cobalt pellets",
+      "status": "correct",
+      "reason": "Tungsten W matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-03",
+      "group": "probe-tips",
+      "query": "hard conductive probe tip material for repeated thermal cycling",
+      "status": "wrong",
+      "reason": "strength weight 0.204 below expected 0.250",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-04",
+      "group": "probe-tips",
+      "query": "conductive probe contact material for 200C pellet testing",
+      "status": "correct",
+      "reason": "Tungsten W matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-05",
+      "group": "probe-tips",
+      "query": "probe tip alloy for electrical measurements at 200 celsius",
+      "status": "wrong",
+      "reason": "strength weight 0.204 below expected 0.250",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-06",
+      "group": "probe-tips",
+      "query": "hard metal for contact probes on sintered pellets",
+      "status": "correct",
+      "reason": "Tungsten W matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-07",
+      "group": "probe-tips",
+      "query": "electrode tip material for conductivity test fixture",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-08",
+      "group": "probe-tips",
+      "query": "conductive contact tip for hot pellet measurements",
+      "status": "wrong",
+      "reason": "strength weight 0.204 below expected 0.250",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-09",
+      "group": "probe-tips",
+      "query": "measurement probe tip material with high conductivity and hardness",
+      "status": "correct",
+      "reason": "Tungsten W matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "probe-tips-10",
+      "group": "probe-tips",
+      "query": "4 point probe contact material for ceramic pellet testing",
+      "status": "correct",
+      "reason": "Tungsten W matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "conductive-contacts-01",
+      "group": "conductive-contacts",
+      "query": "electrically conductive connector spring material",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "conductive-contacts-02",
+      "group": "conductive-contacts",
+      "query": "conductive contact alloy for electrical terminal",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "conductive-contacts-03",
+      "group": "conductive-contacts",
+      "query": "low resistivity metal for current carrying contact",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "conductive-contacts-04",
+      "group": "conductive-contacts",
+      "query": "electrical connector material with good conductivity",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "conductive-contacts-05",
+      "group": "conductive-contacts",
+      "query": "conductive alloy for durable contacts",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Maraging Steel 300"
+    },
+    {
+      "id": "conductive-contacts-06",
+      "group": "conductive-contacts",
+      "query": "contact material for electrical probes",
+      "status": "wrong",
+      "reason": "Tungsten W did not match expected or acceptable winners",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "conductive-contacts-07",
+      "group": "conductive-contacts",
+      "query": "copper like material for connector pins",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "conductive-contacts-08",
+      "group": "conductive-contacts",
+      "query": "conductive spring contact metal",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "conductive-contacts-09",
+      "group": "conductive-contacts",
+      "query": "metal for low resistivity connector hardware",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "CFRP (Carbon Fiber UD)"
+    },
+    {
+      "id": "conductive-contacts-10",
+      "group": "conductive-contacts",
+      "query": "best conductive contact material",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "bga-solder-01",
+      "group": "bga-solder",
+      "query": "lead free BGA solder for automotive electronics",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "bga-solder-02",
+      "group": "bga-solder",
+      "query": "RoHS BGA solder with thermal cycling to 125C",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "bga-solder-03",
+      "group": "bga-solder",
+      "query": "electronics solder joint for automotive BGA package",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "bga-solder-04",
+      "group": "bga-solder",
+      "query": "lead free reflow solder below 260C for BGA",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "bga-solder-05",
+      "group": "bga-solder",
+      "query": "solder alloy for package reliability and thermal cycling",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "bga-solder-06",
+      "group": "bga-solder",
+      "query": "BGA package solder with expansion mismatch concerns",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "bga-solder-07",
+      "group": "bga-solder",
+      "query": "automotive electronics solder recommendation",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "bga-solder-08",
+      "group": "bga-solder",
+      "query": "lead free SMT solder for thermal cycling service",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "bga-solder-09",
+      "group": "bga-solder",
+      "query": "BGA solder material under reflow and cycling",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "bga-solder-10",
+      "group": "bga-solder",
+      "query": "package solder for automotive board assembly",
+      "status": "wrong",
+      "reason": "banned category appeared in top 5",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "high-temp-insulator-01",
+      "group": "high-temp-insulator",
+      "query": "high temperature electrical insulator",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "high-temp-insulator-02",
+      "group": "high-temp-insulator",
+      "query": "ceramic insulator for hot electronics",
+      "status": "wrong",
+      "reason": "banned category appeared in top 3",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "high-temp-insulator-03",
+      "group": "high-temp-insulator",
+      "query": "electrical insulation material for high heat",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "high-temp-insulator-04",
+      "group": "high-temp-insulator",
+      "query": "thermally stable insulating ceramic",
+      "status": "wrong",
+      "reason": "banned category appeared in top 3",
+      "responseStatus": 200,
+      "topMaterial": "Kevlar/Epoxy"
+    },
+    {
+      "id": "high-temp-insulator-05",
+      "group": "high-temp-insulator",
+      "query": "hot zone electrical insulation material",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "high-temp-insulator-06",
+      "group": "high-temp-insulator",
+      "query": "insulating material with high service temperature",
+      "status": "wrong",
+      "reason": "banned category appeared in top 3",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "high-temp-insulator-07",
+      "group": "high-temp-insulator",
+      "query": "ceramic insulator for furnace-adjacent hardware",
+      "status": "wrong",
+      "reason": "banned category appeared in top 3",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "high-temp-insulator-08",
+      "group": "high-temp-insulator",
+      "query": "electrical insulator at elevated temperature",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "high-temp-insulator-09",
+      "group": "high-temp-insulator",
+      "query": "high heat insulating ceramic recommendation",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "high-temp-insulator-10",
+      "group": "high-temp-insulator",
+      "query": "electrical insulation for hot assembly",
+      "status": "acceptable but suboptimal",
+      "reason": "expected winner exists in top 3 but not at rank 1",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "thermal-insulation-01",
+      "group": "thermal-insulation",
+      "query": "low thermal conductivity material for heat insulation",
+      "status": "correct",
+      "reason": "Kevlar/Epoxy matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Kevlar/Epoxy"
+    },
+    {
+      "id": "thermal-insulation-02",
+      "group": "thermal-insulation",
+      "query": "thermal barrier material with low thermal conductivity",
+      "status": "correct",
+      "reason": "Kevlar/Epoxy matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Kevlar/Epoxy"
+    },
+    {
+      "id": "thermal-insulation-03",
+      "group": "thermal-insulation",
+      "query": "need less thermal conductivity and minimal heat transfer",
+      "status": "correct",
+      "reason": "Kevlar/Epoxy matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Kevlar/Epoxy"
+    },
+    {
+      "id": "thermal-insulation-04",
+      "group": "thermal-insulation",
+      "query": "thermally insulating material for a heat shield",
+      "status": "correct",
+      "reason": "Kevlar/Epoxy matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Kevlar/Epoxy"
+    },
+    {
+      "id": "thermal-insulation-05",
+      "group": "thermal-insulation",
+      "query": "material for insulation where low thermal conductivity matters",
+      "status": "correct",
+      "reason": "Kevlar/Epoxy matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Kevlar/Epoxy"
+    },
+    {
+      "id": "electrical-insulator-heat-spreader-01",
+      "group": "electrical-insulator-heat-spreader",
+      "query": "electrically insulating but thermally conductive material for hot electronics",
+      "status": "correct",
+      "reason": "Silicon Nitride Si3N4 matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Silicon Nitride Si3N4"
+    },
+    {
+      "id": "electrical-insulator-heat-spreader-02",
+      "group": "electrical-insulator-heat-spreader",
+      "query": "need electrical insulation with good thermal conductivity for a hot fixture",
+      "status": "correct",
+      "reason": "Silicon Nitride Si3N4 matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Silicon Nitride Si3N4"
+    },
+    {
+      "id": "electrical-insulator-heat-spreader-03",
+      "group": "electrical-insulator-heat-spreader",
+      "query": "ceramic heat spreader that stays electrically insulating",
+      "status": "correct",
+      "reason": "Silicon Nitride Si3N4 matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Silicon Nitride Si3N4"
+    },
+    {
+      "id": "electrical-insulator-heat-spreader-04",
+      "group": "electrical-insulator-heat-spreader",
+      "query": "thermally conductive electrical insulator for electronics packaging",
+      "status": "correct",
+      "reason": "Silicon Nitride Si3N4 matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Silicon Nitride Si3N4"
+    },
+    {
+      "id": "electrical-insulator-heat-spreader-05",
+      "group": "electrical-insulator-heat-spreader",
+      "query": "electrical insulator that can dissipate heat without becoming conductive",
+      "status": "correct",
+      "reason": "Silicon Nitride Si3N4 matched expected winner set",
+      "responseStatus": 200,
+      "topMaterial": "Silicon Nitride Si3N4"
+    },
+    {
+      "id": "underspecified-01",
+      "group": "underspecified",
+      "query": "material please",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-02",
+      "group": "underspecified",
+      "query": "what should I use",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-03",
+      "group": "underspecified",
+      "query": "need a material recommendation",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-04",
+      "group": "underspecified",
+      "query": "best material",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-05",
+      "group": "underspecified",
+      "query": "help me choose a material",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-06",
+      "group": "underspecified",
+      "query": "I need something that works",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-07",
+      "group": "underspecified",
+      "query": "pick a material for me",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-08",
+      "group": "underspecified",
+      "query": "recommend something sensible",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-09",
+      "group": "underspecified",
+      "query": "I do not know what material to use",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "underspecified-10",
+      "group": "underspecified",
+      "query": "general material suggestion",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "gibberish-01",
+      "group": "gibberish",
+      "query": "blorf zindle frame thingy hot-ish maybe",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "gibberish-02",
+      "group": "gibberish",
+      "query": "need material for wobble gadget in ocean-ish vibes",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "gibberish-03",
+      "group": "gibberish",
+      "query": "cheap but not too weird for a spinny doohickey",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Grey Cast Iron"
+    },
+    {
+      "id": "gibberish-04",
+      "group": "gibberish",
+      "query": "glorp 3d thing near motor but also maybe not",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Carbon-Carbon Composite"
+    },
+    {
+      "id": "gibberish-05",
+      "group": "gibberish",
+      "query": "shiny conductive maybe maybe not bracket blob",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Tool Steel D2"
+    },
+    {
+      "id": "gibberish-06",
+      "group": "gibberish",
+      "query": "seawater-ish clamp thing but lightweight somehow",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "HDPE"
+    },
+    {
+      "id": "gibberish-07",
+      "group": "gibberish",
+      "query": "BGA-ish package-y solder-y question stuff",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    },
+    {
+      "id": "gibberish-08",
+      "group": "gibberish",
+      "query": "probe-y contact-y pellet-y hot metal-ish",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Tungsten W"
+    },
+    {
+      "id": "gibberish-09",
+      "group": "gibberish",
+      "query": "random polymerish cover maybe outdoors sorta",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "LCP (Liquid Crystal Polymer)"
+    },
+    {
+      "id": "gibberish-10",
+      "group": "gibberish",
+      "query": "mystery alloy for widget with unknown constraints",
+      "status": "correct",
+      "reason": "no strict winner expectation for this exploratory prompt",
+      "responseStatus": 200,
+      "topMaterial": "Zirconia ZrO2"
+    }
+  ]
+}

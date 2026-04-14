@@ -3,30 +3,22 @@
 import { AlertTriangle } from "lucide-react";
 import { startTransition, useEffect, useRef, useState } from "react";
 
+import { ALL_MATERIALS } from "@/data";
 import AshbyPlot from "@/components/AshbyPlot";
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Header from "@/components/Header";
 import NovelAlloyPredictor from "@/components/NovelAlloyPredictor";
 import QueryForm from "@/components/QueryForm";
 import ResultsPanel from "@/components/ResultsPanel";
+import { materialCount } from "@/lib/materials-db";
+import { sourceCount } from "@/lib/material-display";
 import type { RecommendResponse, UserConstraints } from "@/types";
-
-type WeightState = UserConstraints["priorityWeights"];
-type ExploreTab = "database" | "ashby" | "predictor";
-
-const DEFAULT_WEIGHTS: WeightState = {
-  strength: 0.3,
-  thermal: 0.15,
-  weight: 0.15,
-  cost: 0.3,
-  corrosion: 0.1
-};
 
 function buildLoadingSteps(totalMaterials: number) {
   return [
     "Extracting constraints...",
-    `Scoring ${totalMaterials.toLocaleString()} materials...`,
-    "Deduplicating and ranking candidates...",
+    `Scoring ${totalMaterials} materials...`,
+    "Selecting best candidates (RAG)...",
     "Generating explanation..."
   ];
 }
@@ -36,54 +28,19 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastQuery, setLastQuery] = useState("");
-  const [lastManualConstraints, setLastManualConstraints] = useState<
-    Partial<UserConstraints> | undefined
-  >(undefined);
   const [searchDurationMs, setSearchDurationMs] = useState(0);
   const [loadingStepIndex, setLoadingStepIndex] = useState(0);
   const [summaryBarVisible, setSummaryBarVisible] = useState(false);
-  const [weights, setWeights] = useState<WeightState>(DEFAULT_WEIGHTS);
-  const [weightsAutoDetected, setWeightsAutoDetected] = useState(false);
-  const [hasManualWeightOverride, setHasManualWeightOverride] = useState(false);
+  const [inferredConstraints, setInferredConstraints] = useState<UserConstraints | null>(null);
+  const [autoDetected, setAutoDetected] = useState(false);
   const [negatedAxes, setNegatedAxes] = useState<string[]>([]);
-  const [exploreTab, setExploreTab] = useState<ExploreTab>("database");
-  const [materialStats, setMaterialStats] = useState({
-    materialCount: 0,
-    totalSources: 0
-  });
+  const [libraryView, setLibraryView] = useState<"database" | "ashby" | "predictor">(
+    "database"
+  );
   const querySectionRef = useRef<HTMLElement | null>(null);
+  const totalSources = sourceCount(ALL_MATERIALS);
 
-  const loadingSteps = buildLoadingSteps(materialStats.materialCount);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadStats() {
-      try {
-        const response = await fetch("/api/materials?scope=stats");
-        const payload = (await response.json()) as {
-          materialCount?: number;
-          totalSources?: number;
-        };
-
-        if (active) {
-          setMaterialStats({
-            materialCount: payload.materialCount ?? 0,
-            totalSources: payload.totalSources ?? 0
-          });
-        }
-      } catch {
-        if (active) {
-          setMaterialStats({ materialCount: 0, totalSources: 0 });
-        }
-      }
-    }
-
-    void loadStats();
-    return () => {
-      active = false;
-    };
-  }, []);
+  const loadingSteps = buildLoadingSteps(materialCount);
 
   useEffect(() => {
     if (!loading) {
@@ -96,7 +53,7 @@ export default function HomePage() {
       setLoadingStepIndex((current) =>
         current < loadingSteps.length - 1 ? current + 1 : current
       );
-    }, 650);
+    }, 600);
 
     return () => window.clearInterval(interval);
   }, [loading, loadingSteps.length]);
@@ -118,48 +75,37 @@ export default function HomePage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [results]);
 
-  function applyInferredWeights(nextWeights: WeightState) {
-    setWeights({
-      strength: Math.round(nextWeights.strength * 100) / 100,
-      thermal: Math.round(nextWeights.thermal * 100) / 100,
-      weight: Math.round(nextWeights.weight * 100) / 100,
-      cost: Math.round(nextWeights.cost * 100) / 100,
-      corrosion: Math.round(nextWeights.corrosion * 100) / 100
-    });
-    setWeightsAutoDetected(true);
-    setHasManualWeightOverride(false);
-  }
-
-  async function handleSubmit(query: string, manualConstraints?: object) {
-    const manual = manualConstraints as Partial<UserConstraints> | undefined;
+  async function handleSubmit(query: string) {
     const started = performance.now();
 
     setLoading(true);
     setError("");
     setLastQuery(query);
-    setLastManualConstraints(manual);
 
     try {
       const response = await fetch("/api/recommend", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, manualConstraints: manual })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query })
       });
 
       const data = (await response.json()) as RecommendResponse & { error?: string };
+
       if (!response.ok) {
         throw new Error(data.error ?? "Something went wrong. Please try again.");
       }
 
-      if (data.inferredConstraints?.priorityWeights) {
-        applyInferredWeights(data.inferredConstraints.priorityWeights);
-      }
+      setInferredConstraints(data.inferredConstraints ?? null);
+      setAutoDetected(Boolean(data.inferredConstraints?.priorityWeights));
       setNegatedAxes(data.inferredConstraints?._negatedAxes ?? []);
 
       startTransition(() => setResults(data));
       setSearchDurationMs(performance.now() - started);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -173,7 +119,7 @@ export default function HomePage() {
         <div className="fixed left-0 right-0 top-[52px] z-40 border-b border-surface-800 bg-surface-900/95 backdrop-blur-sm">
           <div className="mx-auto max-w-6xl px-4 py-2 text-[11px] text-surface-400">
             Showing top {Math.min(5, results.rankedMaterials.length)} of{" "}
-            {results.matchCount ?? results.rankedMaterials.length} results for{" "}
+            {results.matchCount ?? results.rankedMaterials.length} results for:{" "}
             <span className="text-zinc-100">{lastQuery || "current constraints"}</span>
           </div>
         </div>
@@ -197,18 +143,17 @@ export default function HomePage() {
             <h1 className="mt-5 text-[36px] font-bold tracking-tight text-zinc-100">
               Find the right material. <span className="text-brand">Fast.</span>
             </h1>
-            <p className="mx-auto mt-4 max-w-[560px] text-[14px] leading-[1.7] text-zinc-500">
-              Describe your engineering challenge in plain English. The app extracts
-              constraints, ranks {materialStats.materialCount.toLocaleString()} deduplicated materials,
-              and separates engineering grades from Materials Project compounds so each
-              workflow stays focused.
+            <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.7] text-zinc-500">
+              Describe your engineering challenge in plain English. The AI extracts
+              constraints and ranks {materialCount.toLocaleString()} materials spanning curated,
+              MakeItFrom, and cleaned Materials Project engineering datasets.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
               {[
-                [materialStats.materialCount.toLocaleString(), "Materials"],
+                [materialCount.toLocaleString(), "Materials"],
                 ["5", "Categories"],
-                [String(materialStats.totalSources), "Source Groups"]
+                [String(totalSources), "Sources"]
               ].map(([value, label], index) => (
                 <div key={label} className="flex items-center gap-6">
                   <div>
@@ -226,16 +171,9 @@ export default function HomePage() {
           <QueryForm
             onSubmit={handleSubmit}
             loading={loading}
-            weights={weights}
-            weightsAutoDetected={weightsAutoDetected}
-            hasManualWeightOverride={hasManualWeightOverride}
+            inferredConstraints={inferredConstraints}
+            autoDetected={autoDetected}
             negatedAxes={negatedAxes}
-            onWeightsChange={setWeights}
-            onManualWeightOverride={() => {
-              setWeightsAutoDetected(false);
-              setHasManualWeightOverride(true);
-              setNegatedAxes([]);
-            }}
           />
         </section>
 
@@ -250,7 +188,10 @@ export default function HomePage() {
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               {[0, 1, 2].map((card) => (
-                <div key={card} className="rounded-xl border border-surface-800 bg-surface-900 p-4">
+                <div
+                  key={card}
+                  className="rounded-xl border border-surface-800 bg-surface-900 p-4"
+                >
                   <div className="shimmer h-3.5 w-[40%] rounded" />
                   <div className="shimmer mt-2 h-2.5 w-[25%] rounded" />
                   <div className="shimmer mt-4 h-[3px] w-[60%] rounded" />
@@ -277,7 +218,7 @@ export default function HomePage() {
                   <div className="mt-1 font-mono text-[12px] text-surface-400">{error}</div>
                   <button
                     type="button"
-                    onClick={() => void handleSubmit(lastQuery, lastManualConstraints)}
+                    onClick={() => void handleSubmit(lastQuery)}
                     className="mt-3 rounded-lg bg-brand px-4 py-2 text-[12px] font-bold text-brand-subtle transition hover:bg-amber-400"
                   >
                     Try again
@@ -290,25 +231,31 @@ export default function HomePage() {
 
         {results ? (
           <section className="mx-auto mt-8 max-w-6xl px-4">
-            <ResultsPanel data={results} query={lastQuery} searchDurationMs={searchDurationMs} />
+            <ResultsPanel
+              data={results}
+              query={lastQuery}
+              searchDurationMs={searchDurationMs}
+            />
           </section>
         ) : null}
 
         <section className="mx-auto mt-12 max-w-6xl px-4">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            {([
+          <div className="mb-4 flex flex-wrap gap-2">
+            {[
               ["database", "Database"],
               ["ashby", "Ashby Plot"],
               ["predictor", "Predictor"]
-            ] as Array<[ExploreTab, string]>).map(([value, label]) => (
+            ].map(([value, label]) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setExploreTab(value)}
-                className={`rounded-full px-4 py-2 text-[12px] transition ${
-                  exploreTab === value
-                    ? "bg-brand font-semibold text-brand-subtle"
-                    : "border border-surface-800 bg-surface-900 text-surface-400 hover:text-zinc-100"
+                onClick={() =>
+                  setLibraryView(value as "database" | "ashby" | "predictor")
+                }
+                className={`rounded-full border px-4 py-2 text-[12px] transition ${
+                  libraryView === value
+                    ? "border-amber-500/40 bg-amber-500/10 text-brand"
+                    : "border-surface-800 bg-surface-900 text-surface-400 hover:text-zinc-100"
                 }`}
               >
                 {label}
@@ -316,9 +263,9 @@ export default function HomePage() {
             ))}
           </div>
 
-          {exploreTab === "database" ? <DatabaseExplorer /> : null}
-          {exploreTab === "ashby" ? <AshbyPlot /> : null}
-          {exploreTab === "predictor" ? <NovelAlloyPredictor /> : null}
+          {libraryView === "database" ? <DatabaseExplorer /> : null}
+          {libraryView === "ashby" ? <AshbyPlot /> : null}
+          {libraryView === "predictor" ? <NovelAlloyPredictor /> : null}
         </section>
 
         <footer className="mt-16 border-t border-surface-900 px-4 py-6">
@@ -327,7 +274,7 @@ export default function HomePage() {
               Smart Alloy Selector · MET-QUEST&apos;26
             </div>
             <div className="text-[10px] text-surface-700">
-              {materialStats.materialCount.toLocaleString()} materials from {materialStats.totalSources} source groups
+              {materialCount.toLocaleString()} materials from {totalSources} sources
             </div>
             <div className="flex items-center gap-3 text-[10px] text-surface-700">
               <span>Built with Next.js + Gemini</span>
